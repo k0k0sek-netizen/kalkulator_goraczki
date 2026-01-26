@@ -4,10 +4,11 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Bot, X, Send, User } from 'lucide-react';
+import { Bot, X, Send, User, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { Profile } from '@/types';
+import { askGeminiAction } from '@/actions/gemini';
 
 interface Message {
     id: string;
@@ -22,7 +23,7 @@ interface AiChatAssistantProps {
 }
 
 // Simple Rule-Based Logic (Offline AI)
-const getBotResponse = (input: string, profile?: Profile): string => {
+const getBotResponse = (input: string, profile?: Profile): string | null => {
     const lower = input.toLowerCase();
 
     if (lower.includes('zwymiotował') || lower.includes('wymiot')) {
@@ -50,14 +51,16 @@ const getBotResponse = (input: string, profile?: Profile): string => {
         return 'Możesz stosować tzw. naprzemienne podawanie leków (Paracetamol i Ibuprofen), ale zachowaj odstępy! Między tym samym lekiem (np. Ibuprofen-Ibuprofen) musi być 6h przerwy. Między różnymi (Paracetamol-Ibuprofen) zazwyczaj 3-4h. Nigdy nie podawaj ich naraz, chyba że lekarz zalecił inaczej.';
     }
 
-    return 'Jestem prostym asystentem (baza offline). Wybierz jeden z tematów powyżej lub zapytaj o: wymioty, drgawki, łączenie leków, brak poprawy.';
+    // Return null to trigger Gemini
+    return null;
 };
 
 export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssistantProps) {
     const [messages, setMessages] = useState<Message[]>([
-        { id: '1', role: 'assistant', text: 'Cześć! Jestem Twoim wirtualnym asystentem (offline). Nie korzystam z internetu, ale pomogę Ci w typowych sytuacjach. Wybierz temat poniżej lub napisz pytanie.' }
+        { id: '1', role: 'assistant', text: 'Cześć! Jestem Twoim wirtualnym asystentem. Działam w trybie hybrydowym: najpierw sprawdzam bazę offline, a jeśli trzeba - pytam chmurę AI (wymaga internetu).' }
     ]);
     const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const suggestions = [
@@ -74,19 +77,41 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
         }
     }, [messages, isOpen]);
 
-    const handleSend = (text: string) => {
-        if (!text.trim()) return;
+    const handleSend = async (text: string) => {
+        if (!text.trim() || isLoading) return;
 
         const userMsg: Message = { id: Date.now().toString(), role: 'user', text };
         setMessages(prev => [...prev, userMsg]);
         setInput('');
 
-        // Simulate AI delay
-        setTimeout(() => {
-            const responseText = getBotResponse(text, activeProfile);
-            const botMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', text: responseText };
+        // 1. Try Offline Logic
+        const offlineResponse = getBotResponse(text, activeProfile);
+
+        if (offlineResponse) {
+            setTimeout(() => {
+                const botMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', text: offlineResponse };
+                setMessages(prev => [...prev, botMsg]);
+            }, 500);
+            return;
+        }
+
+        // 2. Try Gemini (Online)
+        setIsLoading(true);
+        const context = activeProfile ? `Dziecko: ${activeProfile.name}, waga: ${activeProfile.weight}kg` : '';
+
+        try {
+            const result = await askGeminiAction(text, context);
+            const botMsg: Message = {
+                id: (Date.now() + 1).toString(),
+                role: 'assistant',
+                text: result.success ? result.message : `(Offline) ${result.message}`
+            };
             setMessages(prev => [...prev, botMsg]);
-        }, 600);
+        } catch (e) {
+            setMessages(prev => [...prev, { id: 'err', role: 'assistant', text: 'Błąd połączenia z serwerem AI.' }]);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -122,6 +147,14 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                                         </div>
                                     </div>
                                 ))}
+                                {isLoading && (
+                                    <div className="flex justify-start">
+                                        <div className="bg-slate-800 rounded-2xl rounded-bl-none px-4 py-2 border border-slate-700 flex items-center gap-2 text-slate-400 text-sm">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span>Myślę...</span>
+                                        </div>
+                                    </div>
+                                )}
                             </CardContent>
 
                             {/* Suggestions */}
@@ -148,7 +181,7 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                                         placeholder="Napisz pytanie..."
                                         className="bg-slate-900 border-slate-700 focus:ring-emerald-500"
                                     />
-                                    <Button type="submit" size="icon" className="bg-emerald-600 hover:bg-emerald-700">
+                                    <Button type="submit" size="icon" className="bg-emerald-600 hover:bg-emerald-700" disabled={isLoading}>
                                         <Send className="h-4 w-4" />
                                     </Button>
                                 </form>
