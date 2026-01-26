@@ -12,6 +12,7 @@ import { isPediatric } from '@/lib/calculations';
 import { DRUG_CONFIG } from '@/lib/constants';
 import type { Profile, HistoryItem, DrugType, DoseUnit } from '@/types';
 import { generateId } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 export default function CalculatorPage() {
     const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -177,60 +178,78 @@ export default function CalculatorPage() {
             </div>
 
             {/* Temperature input with Save Button */}
-            <Card className="mb-6 border-emerald-500/20 bg-slate-800/50">
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                        <Thermometer className="h-5 w-5 text-emerald-500" />
-                        Wpisz temperaturę
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <input
-                                type="number"
-                                step="0.1"
-                                value={temperature}
-                                onChange={(e) => setTemperature(e.target.value)}
-                                placeholder="np. 38.5"
-                                className="w-full h-10 px-3 pr-8 rounded-md bg-slate-900 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            />
-                            <span className="absolute right-3 top-2.5 text-slate-400 text-sm">°C</span>
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+            >
+                <Card className="mb-6 border-emerald-500/20 bg-slate-800/50">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Thermometer className="h-5 w-5 text-emerald-500" />
+                            Wpisz temperaturę
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={temperature}
+                                    onChange={(e) => setTemperature(e.target.value)}
+                                    placeholder="np. 38.5"
+                                    className="w-full h-10 px-3 pr-8 rounded-md bg-slate-900 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                />
+                                <span className="absolute right-3 top-2.5 text-slate-400 text-sm">°C</span>
+                            </div>
+                            <Button
+                                onClick={handleInitiateMeasurement}
+                                disabled={!temperature}
+                                variant="secondary"
+                                className="whitespace-nowrap"
+                            >
+                                Zapisz pomiar
+                            </Button>
                         </div>
-                        <Button
-                            onClick={handleInitiateMeasurement}
-                            disabled={!temperature}
-                            variant="secondary"
-                            className="whitespace-nowrap"
-                        >
-                            Zapisz pomiar
-                        </Button>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-2">
-                        💡 Aby zapisać <strong>lek z temperaturą</strong>: kliknij "Zapisz podanie" poniżej – tam też możesz dodać temperaturę.
-                    </p>
-                </CardContent>
-            </Card>
+                        <p className="text-xs text-slate-400 mt-2">
+                            💡 Aby zapisać <strong>lek z temperaturą</strong>: kliknij "Zapisz podanie" poniżej – tam też możesz dodać temperaturę.
+                        </p>
+                    </CardContent>
+                </Card>
+            </motion.div>
 
             {/* Drug Cards */}
             <div className="space-y-4">
-                <DrugCard
-                    weight={activeProfile.weight}
-                    config={isPed ? DRUG_CONFIG.paracetamol.pediatric : DRUG_CONFIG.paracetamol.adult}
-                    drugName="Paracetamol"
-                    color="blue"
-                    onDoseCalculated={(dose) => handleInitiateDose('Paracetamol', dose)}
-                    history={activeProfile.history}
-                />
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1, duration: 0.4 }}
+                >
+                    <DrugCard
+                        weight={activeProfile.weight}
+                        config={isPed ? DRUG_CONFIG.paracetamol.pediatric : DRUG_CONFIG.paracetamol.adult}
+                        drugName="Paracetamol"
+                        color="blue"
+                        onDoseCalculated={(dose) => handleInitiateDose('Paracetamol', dose)}
+                        history={activeProfile.history}
+                    />
+                </motion.div>
 
-                <DrugCard
-                    weight={activeProfile.weight}
-                    config={isPed ? DRUG_CONFIG.ibuprofen.pediatric : DRUG_CONFIG.ibuprofen.adult}
-                    drugName="Ibuprofen"
-                    color="orange"
-                    onDoseCalculated={(dose) => handleInitiateDose('Ibuprofen', dose)}
-                    history={activeProfile.history}
-                />
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.4 }}
+                >
+                    <DrugCard
+                        weight={activeProfile.weight}
+                        config={isPed ? DRUG_CONFIG.ibuprofen.pediatric : DRUG_CONFIG.ibuprofen.adult}
+                        drugName="Ibuprofen"
+                        color="orange"
+                        onDoseCalculated={(dose) => handleInitiateDose('Ibuprofen', dose)}
+                        history={activeProfile.history}
+                    />
+                </motion.div>
             </div>
 
             {/* Modal */}

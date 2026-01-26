@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import type { Profile, HistoryItem, DoseUnit } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { generatePdfReport } from '@/lib/pdf-generator';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function HistoryPage() {
     const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -62,7 +63,6 @@ export default function HistoryPage() {
     }) => {
         if (!activeProfile || !editingItem) return;
 
-        // Merge logic
         const updatedItem: HistoryItem = {
             ...editingItem,
             timestamp: data.timestamp,
@@ -71,8 +71,6 @@ export default function HistoryPage() {
             temperature: data.temperature,
             notes: data.notes,
             symptoms: data.symptoms,
-            // Keep unit, drug, type from original or allow edit?
-            // For now assume drug type is fixed, but ml could change, thus mg changes.
         };
 
         const updatedHistory = activeProfile.history.map(h =>
@@ -127,6 +125,12 @@ export default function HistoryPage() {
         }
     };
 
+    // Helper calculate amountPerMl for modal
+    const getAmountPerMl = (item: HistoryItem) => {
+        if (!item.doseMl || item.doseMl === 0) return 0;
+        return (item.doseMg || 0) / item.doseMl;
+    };
+
     if (!activeProfile) {
         return (
             <div className="min-h-screen p-4 flex items-center justify-center">
@@ -145,13 +149,6 @@ export default function HistoryPage() {
     const sortedHistory = [...activeProfile.history].sort((a, b) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
-
-    // Helper calculate amountPerMl for modal
-    const getAmountPerMl = (item: HistoryItem) => {
-        // Caution: division by zero
-        if (!item.doseMl || item.doseMl === 0) return 0;
-        return (item.doseMg || 0) / item.doseMl;
-    };
 
     return (
         <div className="min-h-screen p-4 pb-24">
@@ -192,80 +189,91 @@ export default function HistoryPage() {
                         </CardContent>
                     </Card>
                 ) : (
-                    sortedHistory.map((item) => (
-                        <Card key={item.id} className="border-l-4 border-l-emerald-500 bg-slate-800/40">
-                            <CardHeader className="pb-2 p-3">
-                                <CardTitle className="text-base flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className={
-                                            item.drug === 'Paracetamol' ? 'text-blue-400' :
-                                                item.drug === 'Ibuprofen' ? 'text-orange-400' :
-                                                    'text-emerald-400'
-                                        }>
-                                            {item.drug}
-                                        </span>
-                                        <span className="text-xs text-slate-500 font-normal">
-                                            {formatDate(new Date(item.timestamp), {
-                                                dateStyle: 'short',
-                                                timeStyle: 'short',
-                                            })}
-                                        </span>
-                                    </div>
-                                    <div className="flex gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0 text-slate-400 hover:text-emerald-400"
-                                            onClick={() => openEditModal(item)}
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0 text-slate-400 hover:text-red-400"
-                                            onClick={() => deleteHistoryItem(item.id)}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="text-sm space-y-2 p-3 pt-0">
-                                <div className="flex flex-wrap gap-x-4 gap-y-1">
-                                    {item.doseMl !== undefined && (
-                                        <div>
-                                            Dawka: <span className="font-medium text-slate-200">{item.doseMl}{item.unit}</span>
-                                            <span className="text-slate-500 text-xs ml-1">({item.doseMg}mg)</span>
+                    <AnimatePresence mode='popLayout'>
+                        {sortedHistory.map((item) => (
+                            <motion.div
+                                key={item.id}
+                                layout
+                                initial={{ opacity: 0, x: -20, scale: 0.95 }}
+                                animate={{ opacity: 1, x: 0, scale: 1 }}
+                                exit={{ opacity: 0, x: -100, height: 0, marginBottom: 0 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <Card className="border-l-4 border-l-emerald-500 bg-slate-800/40 hover:bg-slate-800/60 transition-colors">
+                                    <CardHeader className="pb-2 p-3">
+                                        <CardTitle className="text-base flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className={
+                                                    item.drug === 'Paracetamol' ? 'text-blue-400' :
+                                                        item.drug === 'Ibuprofen' ? 'text-orange-400' :
+                                                            'text-emerald-400'
+                                                }>
+                                                    {item.drug}
+                                                </span>
+                                                <span className="text-xs text-slate-500 font-normal">
+                                                    {formatDate(new Date(item.timestamp), {
+                                                        dateStyle: 'short',
+                                                        timeStyle: 'short',
+                                                    })}
+                                                </span>
+                                            </div>
+                                            <div className="flex gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0 text-slate-400 hover:text-emerald-400"
+                                                    onClick={() => openEditModal(item)}
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0 text-slate-400 hover:text-red-400"
+                                                    onClick={() => deleteHistoryItem(item.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="text-sm space-y-2 p-3 pt-0">
+                                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                            {item.doseMl !== undefined && (
+                                                <div>
+                                                    Dawka: <span className="font-medium text-slate-200">{item.doseMl}{item.unit}</span>
+                                                    <span className="text-slate-500 text-xs ml-1">({item.doseMg}mg)</span>
+                                                </div>
+                                            )}
+                                            {item.temperature && (
+                                                <div>
+                                                    Temp: <span className="font-medium text-amber-400">{item.temperature}°C</span>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                    {item.temperature && (
-                                        <div>
-                                            Temp: <span className="font-medium text-amber-400">{item.temperature}°C</span>
-                                        </div>
-                                    )}
-                                </div>
 
-                                {/* Notes & Symptoms Display */}
-                                {(item.notes || (item.symptoms && item.symptoms.length > 0)) && (
-                                    <div className="mt-2 text-xs bg-slate-900/50 p-2 rounded border border-slate-700/50">
-                                        {item.symptoms && item.symptoms.length > 0 && (
-                                            <div className="flex flex-wrap gap-1 mb-1">
-                                                {item.symptoms.map(s => (
-                                                    <span key={s} className="bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-800/30">
-                                                        {s}
-                                                    </span>
-                                                ))}
+                                        {/* Notes & Symptoms Display */}
+                                        {(item.notes || (item.symptoms && item.symptoms.length > 0)) && (
+                                            <div className="mt-2 text-xs bg-slate-900/50 p-2 rounded border border-slate-700/50">
+                                                {item.symptoms && item.symptoms.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1 mb-1">
+                                                        {item.symptoms.map(s => (
+                                                            <span key={s} className="bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-800/30">
+                                                                {s}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {item.notes && (
+                                                    <div className="text-slate-300 italic">"{item.notes}"</div>
+                                                )}
                                             </div>
                                         )}
-                                        {item.notes && (
-                                            <div className="text-slate-300 italic">"{item.notes}"</div>
-                                        )}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    ))
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
                 )}
             </div>
 
