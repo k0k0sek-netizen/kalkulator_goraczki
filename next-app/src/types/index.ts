@@ -35,7 +35,7 @@ export interface Concentration {
     label: string;
     mg: number;
     ml: number;
-    form: 'syrop' | 'czopek' | 'tabletka' | 'krople';
+    form: 'syrop' | 'czopek' | 'tabletka' | 'krople' | 'szt.';
 }
 
 export interface DrugDosageConfig {
