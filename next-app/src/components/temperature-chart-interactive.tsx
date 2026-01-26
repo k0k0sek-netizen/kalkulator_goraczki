@@ -108,7 +108,7 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                             labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
                             cursor={{ stroke: '#f97316', strokeWidth: 1, strokeDasharray: '4 4' }}
                             itemStyle={{ color: '#f97316' }}
-                            formatter={(value: number) => [`${value}°C`, 'Temperatura']}
+                            formatter={(value: any) => [`${value}°C`, 'Temperatura']}
                             labelFormatter={(label, active) => {
                                 if (active && active[0]) return active[0].payload.fullDate;
                                 return label;
