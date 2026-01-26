@@ -67,8 +67,17 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                     >
                         <defs>
                             <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                {/* Top of chart (High temp) -> Red */}
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.8} />
+                                {/* Middle (Warning) -> Orange */}
+                                <stop offset="50%" stopColor="#f97316" stopOpacity={0.5} />
+                                {/* Bottom (Safe) -> Green */}
+                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.2} />
+                            </linearGradient>
+                            <linearGradient id="strokeTemp" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                                <stop offset="50%" stopColor="#f97316" stopOpacity={1} />
+                                <stop offset="100%" stopColor="#10b981" stopOpacity={1} />
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.5} />
@@ -81,7 +90,7 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                             axisLine={false}
                         />
                         <YAxis
-                            domain={[domainMin, domainMax]}
+                            domain={['auto', 'auto']} // Let it auto-scale to emphasize the gradient
                             stroke="#94a3b8"
                             fontSize={12}
                             tickCount={5}
@@ -97,20 +106,20 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                                 fontSize: '12px'
                             }}
                             labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
-                            cursor={{ stroke: '#10b981', strokeWidth: 1, strokeDasharray: '4 4' }}
-                            itemStyle={{ color: '#10b981' }}
+                            cursor={{ stroke: '#f97316', strokeWidth: 1, strokeDasharray: '4 4' }}
+                            itemStyle={{ color: '#f97316' }}
                             formatter={(value: number) => [`${value}°C`, 'Temperatura']}
                             labelFormatter={(label, active) => {
                                 if (active && active[0]) return active[0].payload.fullDate;
                                 return label;
                             }}
                         />
-                        <ReferenceLine y={38} stroke="#fb923c" strokeDasharray="3 3" label={{ position: 'right', value: '38°', fill: '#fb923c', fontSize: 10 }} />
+                        <ReferenceLine y={38} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: '38°', fill: '#ef4444', fontSize: 10 }} />
                         <Area
                             type="monotone"
                             dataKey="temp"
-                            stroke="#10b981"
-                            strokeWidth={3}
+                            stroke="url(#strokeTemp)"
+                            strokeWidth={4}
                             fillOpacity={1}
                             fill="url(#colorTemp)"
                             animationDuration={1500}

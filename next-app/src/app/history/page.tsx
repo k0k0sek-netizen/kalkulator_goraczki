@@ -11,11 +11,13 @@ import type { Profile, HistoryItem, DoseUnit } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { generatePdfReport } from '@/lib/pdf-generator';
 import { motion, AnimatePresence } from 'framer-motion';
+import QRCode from "react-qr-code";
 
 export default function HistoryPage() {
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
     const [editingItem, setEditingItem] = useState<HistoryItem | null>(null);
+    const [showQr, setShowQr] = useState(false);
 
     const activeProfile = profiles.find(p => p.id === activeProfileId);
 
@@ -131,6 +133,16 @@ export default function HistoryPage() {
         return (item.doseMg || 0) / item.doseMl;
     };
 
+    // Generate QR Content (Simple text summary)
+    const getQrContent = () => {
+        if (!activeProfile) return '';
+        const recent = activeProfile.history
+            .slice(0, 5) // Last 5 items
+            .map(h => `${formatDate(new Date(h.timestamp), { timeStyle: 'short' })}: ${h.drug} ${h.doseMg ? h.doseMg + 'mg' : ''} ${h.temperature ? h.temperature + 'C' : ''}`)
+            .join(' | ');
+        return `PACJENT: ${activeProfile.name} (${activeProfile.weight}kg) | ${recent}`;
+    };
+
     if (!activeProfile) {
         return (
             <div className="min-h-screen p-4 flex items-center justify-center">
@@ -168,16 +180,47 @@ export default function HistoryPage() {
 
             {/* Export buttons */}
             {activeProfile.history.length > 0 && (
-                <div className="flex gap-2 mb-4">
-                    <Button onClick={downloadPdf} variant="default" className="flex-1 bg-emerald-600 hover:bg-emerald-700">
-                        <Copy className="h-4 w-4 mr-2" />
-                        Pobierz PDF
-                    </Button>
-                    <Button onClick={exportReport} variant="outline" className="flex-1">
-                        <Copy className="h-4 w-4 mr-2" />
-                        Kopiuj tekst
-                    </Button>
-                </div>
+                <>
+                    <div className="flex gap-2 mb-4">
+                        <Button onClick={downloadPdf} variant="default" className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+                            <Copy className="h-4 w-4 mr-2" />
+                            PDF
+                        </Button>
+                        <Button onClick={() => setShowQr(true)} variant="outline" className="flex-1">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xl">📱</span>
+                                QR
+                            </div>
+                        </Button>
+                        <Button onClick={exportReport} variant="outline" className="flex-1">
+                            <Copy className="h-4 w-4 mr-2" />
+                            Kopiuj
+                        </Button>
+                    </div>
+
+                    {/* QR Modal (Simple Overlay) */}
+                    {showQr && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowQr(false)}>
+                            <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full text-center"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <h3 className="text-slate-900 font-bold text-lg mb-4">Zeskanuj pomiary</h3>
+                                <div className="bg-white p-2 inline-block">
+                                    <QRCode value={getQrContent()} size={200} />
+                                </div>
+                                <p className="text-slate-500 text-xs mt-4">
+                                    Pokaż ten kod lekarzowi lub zeskanuj drugim telefonem.
+                                </p>
+                                <Button onClick={() => setShowQr(false)} className="mt-4 w-full" variant="secondary">
+                                    Zamknij
+                                </Button>
+                            </motion.div>
+                        </div>
+                    )}
+                </>
             )}
 
             {/* History list */}
@@ -247,7 +290,7 @@ export default function HistoryPage() {
                                             )}
                                             {item.temperature && (
                                                 <div>
-                                                    Temp: <span className="font-medium text-amber-400">{item.temperature}°C</span>
+                                                    Temp: <span className="font-medium text-amber-400 text-base">{item.temperature}°C</span>
                                                 </div>
                                             )}
                                         </div>
