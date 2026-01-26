@@ -84,7 +84,10 @@ export default function CalculatorPage() {
         // doseMg = doseMl * amountPerMl => amountPerMl = doseMg / doseMl
         // Guard against division by zero
         const amountPerMl = dose.doseMl > 0 ? dose.doseMg / dose.doseMl : 0;
-        const interval = drugName === 'Paracetamol' ? 4 : 6;
+
+        let interval = 4;
+        if (drugName === 'Ibuprofen') interval = 6;
+        if (drugName === 'Metamizol') interval = 8;
 
         setEditingDose({
             isOpen: true,
@@ -253,6 +256,32 @@ export default function CalculatorPage() {
                         onDoseCalculated={(dose) => handleInitiateDose('Ibuprofen', dose)}
                         history={activeProfile.history}
                     />
+                </motion.div>
+
+                {/* Metamizole (Pyralgina) - 2nd Line Drug */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.4 }}
+                    whileHover={{ scale: 1.02, y: -5 }}
+                    whileTap={{ scale: 0.98 }}
+                >
+                    <div className="relative">
+                        <DrugCard
+                            weight={activeProfile.weight}
+                            config={isPed ? DRUG_CONFIG.metamizole.pediatric : DRUG_CONFIG.metamizole.adult}
+                            drugName="Pyralgina (Metamizol)"
+                            color="blue" // Reusing blue classes but will override style visually or accept we use blue/orange theme. 
+                            // Actually DrugCard supports 'blue' | 'orange'.
+                            // I should add 'purple' or just use blue and add a warning badge.
+                            // Let's stick to blue but add a badge above/inside.
+                            onDoseCalculated={(dose) => handleInitiateDose('Metamizol', dose)}
+                            history={activeProfile.history}
+                        />
+                        <div className="absolute -top-2 -right-2 bg-purple-600 text-white text-[10px] px-2 py-0.5 rounded-full shadow-lg border border-purple-400 font-bold uppercase tracking-wider">
+                            Silny (II rzut)
+                        </div>
+                    </div>
                 </motion.div>
             </div>
 

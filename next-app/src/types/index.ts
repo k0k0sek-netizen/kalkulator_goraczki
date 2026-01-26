@@ -1,5 +1,13 @@
 // Core Types & Interfaces
 
+export interface PastEpisode {
+    id: string;
+    startDate: Date;
+    endDate: Date;
+    history: HistoryItem[];
+    summary?: string; // Optional AI summary or note
+}
+
 export interface Profile {
     id: string;
     name: string;
@@ -8,6 +16,7 @@ export interface Profile {
     createdAt: Date;
     updatedAt: Date;
     history: HistoryItem[];
+    archivedEpisodes?: PastEpisode[]; // New field for past diseases
 }
 
 export interface HistoryItem {
@@ -25,7 +34,7 @@ export interface HistoryItem {
 }
 
 
-export type DrugType = 'Paracetamol' | 'Ibuprofen' | 'Pomiar';
+export type DrugType = 'Paracetamol' | 'Ibuprofen' | 'Metamizol' | 'Pomiar';
 export type HistoryType = 'dose' | 'temp';
 export type DoseUnit = 'ml' | 'czopek' | 'szt.';
 
@@ -58,10 +67,11 @@ export interface DrugConfig {
     adult: DrugCategoryConfig;
 }
 
-export type DrugConfigs = {
+export interface DrugConfigs {
     paracetamol: DrugConfig;
     ibuprofen: DrugConfig;
-};
+    metamizole: DrugConfig; // Added Metamizole
+}
 
 // Calculation Results
 

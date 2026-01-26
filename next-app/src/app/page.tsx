@@ -14,13 +14,16 @@ import { AIInsights } from '@/components/ai-insights';
 import { getLastDose, isPediatric } from '@/lib/calculations';
 import { DRUG_CONFIG } from '@/lib/constants';
 import { TemperatureChartInteractive } from '@/components/temperature-chart-interactive';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AiChatAssistant } from '@/components/ai-chat-assistant';
+import { Bot, Sparkles } from 'lucide-react';
 
 export default function HomePage() {
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [newProfileName, setNewProfileName] = useState('');
     const [newProfileWeight, setNewProfileWeight] = useState('');
     const [showNewProfile, setShowNewProfile] = useState(false);
+    const [isChatOpen, setIsChatOpen] = useState(false);
 
     // Load profiles
     useEffect(() => {
@@ -211,6 +214,30 @@ export default function HomePage() {
                     </CardContent>
                 </Card>
             )}
+
+            {/* AI Floating Button */}
+            <motion.div
+                className="fixed bottom-24 right-4 z-40"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+            >
+                <Button
+                    size="icon"
+                    className="h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-600 shadow-[0_0_20px_rgba(16,185,129,0.5)] border-2 border-emerald-400"
+                    onClick={() => setIsChatOpen(true)}
+                >
+                    <Bot className="h-8 w-8 text-white" />
+                </Button>
+            </motion.div>
+
+            {/* AI Chat Modal */}
+            <AiChatAssistant
+                isOpen={isChatOpen}
+                onClose={() => setIsChatOpen(false)}
+                activeProfile={activeProfile || undefined}
+            />
         </div>
     );
 }

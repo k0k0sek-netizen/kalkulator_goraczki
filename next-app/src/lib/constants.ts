@@ -97,4 +97,33 @@ export const DRUG_CONFIG: DrugConfigs = {
             },
         },
     },
+
+    metamizole: {
+        label: 'Metamizol (Pyralgina)',
+        description: ['Przeciwbólowy', 'Przeciwgorączkowy', 'Lek II rzutu - silny'],
+        pediatric: {
+            label: 'Metamizol (Dzieci)',
+            concentrations: [
+                { label: 'Krople 500mg/ml (Pyralgina krople)', mg: 500, ml: 1, form: 'krople' },
+            ],
+            dosage: {
+                minPerKg: 10,
+                maxPerKg: 15,
+                maxDaily: 45, // approx 3-4 doses max
+                hoursInterval: 8, // Strictly regulated usually, 6-8h, sticking to safe 8h for self-medication app
+            },
+        },
+        adult: {
+            label: 'Metamizol (Dorośli)',
+            concentrations: [
+                { label: 'Tabletka 500mg (Pyralgina)', mg: 500, ml: 1, form: 'tabletka' },
+            ],
+            dosage: {
+                minPerKg: 0,
+                maxPerKg: 0,
+                maxDaily: 3000, // Max 6 tablets usually (3000-4000mg depending on source, 3g is safe limit for app)
+                hoursInterval: 6,
+            },
+        },
+    },
 } as const;
