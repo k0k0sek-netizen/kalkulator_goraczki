@@ -217,7 +217,7 @@ export default function HomePage() {
 
             {/* AI Floating Button */}
             <motion.div
-                className="fixed bottom-24 right-4 z-40"
+                className="fixed bottom-20 right-4 z-40"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 whileHover={{ scale: 1.1 }}

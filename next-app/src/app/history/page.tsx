@@ -385,7 +385,15 @@ export default function HistoryPage() {
                         {sortedHistory.length === 0 ? (
                             <Card>
                                 <CardContent className="p-8 text-center text-slate-400">
-                                    Brak wpisów w historii. Dodaj pierwszy pomiar lub lek w Kalkulatorze.
+                                    <p className="mb-4">Brak wpisów w historii. Dodaj pierwszy pomiar lub lek w Kalkulatorze.</p>
+                                    <div className="flex gap-2 justify-center">
+                                        <Button variant="outline" onClick={() => setShowScanner(true)}>
+                                            📷 Skanuj QR
+                                        </Button>
+                                        <Button variant="outline" onClick={() => setShowQr(true)}>
+                                            📤 Generuj QR
+                                        </Button>
+                                    </div>
                                 </CardContent>
                             </Card>
                         ) : (
