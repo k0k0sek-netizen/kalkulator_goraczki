@@ -9,11 +9,12 @@ import { toast } from 'sonner';
 import type { Profile } from '@/types';
 import { generateId } from '@/lib/utils';
 import { ProfileSchema } from '@/lib/validations';
-import { TemperatureChart } from '@/components/temperature-chart';
 import { LiveTimer } from '@/components/timer';
 import { AIInsights } from '@/components/ai-insights';
 import { getLastDose, isPediatric } from '@/lib/calculations';
 import { DRUG_CONFIG } from '@/lib/constants';
+import { TemperatureChartInteractive } from '@/components/temperature-chart-interactive';
+import { motion } from 'framer-motion';
 
 export default function HomePage() {
     const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -118,45 +119,49 @@ export default function HomePage() {
                     </div>
 
                     {/* AI Insights */}
-                    <AIInsights profile={activeProfile} />
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                        <AIInsights profile={activeProfile} />
+                    </motion.div>
 
                     {/* Stats Grid */}
                     <div className="grid grid-cols-3 gap-3">
-                        <Card className="bg-slate-800 border-slate-700">
-                            <CardContent className="p-3 text-center">
-                                <Activity className="h-5 w-5 mx-auto mb-1 text-emerald-400" />
-                                <div className="text-xl font-bold">{profiles.length}</div>
-                                <div className="text-[10px] text-slate-400 uppercase">Profile</div>
-                            </CardContent>
-                        </Card>
-                        <Card className="bg-slate-800 border-slate-700">
-                            <CardContent className="p-3 text-center">
-                                <Pill className="h-5 w-5 mx-auto mb-1 text-blue-400" />
-                                <div className="text-xl font-bold">{medicineCount}</div>
-                                <div className="text-[10px] text-slate-400 uppercase">Dawki</div>
-                            </CardContent>
-                        </Card>
-                        <Card className="bg-slate-800 border-slate-700">
-                            <CardContent className="p-3 text-center">
-                                <Thermometer className="h-5 w-5 mx-auto mb-1 text-orange-400" />
-                                <div className="text-xl font-bold">{tempCount}</div>
-                                <div className="text-[10px] text-slate-400 uppercase">Pomiary</div>
-                            </CardContent>
-                        </Card>
+                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <Card className="bg-slate-800 border-slate-700">
+                                <CardContent className="p-3 text-center">
+                                    <Activity className="h-5 w-5 mx-auto mb-1 text-emerald-400" />
+                                    <div className="text-xl font-bold">{profiles.length}</div>
+                                    <div className="text-[10px] text-slate-400 uppercase">Profile</div>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <Card className="bg-slate-800 border-slate-700">
+                                <CardContent className="p-3 text-center">
+                                    <Pill className="h-5 w-5 mx-auto mb-1 text-blue-400" />
+                                    <div className="text-xl font-bold">{medicineCount}</div>
+                                    <div className="text-[10px] text-slate-400 uppercase">Dawki</div>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                            <Card className="bg-slate-800 border-slate-700">
+                                <CardContent className="p-3 text-center">
+                                    <Thermometer className="h-5 w-5 mx-auto mb-1 text-orange-400" />
+                                    <div className="text-xl font-bold">{tempCount}</div>
+                                    <div className="text-[10px] text-slate-400 uppercase">Pomiary</div>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
                     </div>
 
                     {/* Chart */}
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Activity className="h-5 w-5 text-emerald-500" />
-                                Przebieg temperatury
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <TemperatureChart history={activeProfile.history} />
-                        </CardContent>
-                    </Card>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <TemperatureChartInteractive history={activeProfile.history} />
+                    </motion.div>
                 </>
             ) : (
                 /* Empty State */
