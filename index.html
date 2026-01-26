@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kalkulator Gorączki</title>
+
+    <!-- Meta tagi dla lepszego wyglądu na mobile (Web App) -->
+    <meta name="theme-color" content="#064e3b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- Stylizacja (Tailwind CSS) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#1e293b' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- CSS reset dla iOS input zoom -->
+    <style>
+        input,
+        select,
+        textarea {
+            font-size: 16px !important;
+        }
+
+        /* Zapobiega zoomowaniu na iOS przy kliknięciu */
+        .safe-area-pb {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+    </style>
+
+    <!-- React i Babel (niezbędne do działania aplikacji w jednym pliku) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body class="bg-slate-900 text-slate-100 transition-colors duration-200 selection:bg-emerald-800 dark">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+        const apiKey = ""; // API Key provided by environment
+
+        // --- ERROR BOUNDARY ---
+        class ErrorBoundary extends React.Component {
+            constructor(props) {
+                super(props);
+                this.state = { hasError: false, error: null };
+            }
+            static getDerivedStateFromError(error) { return { hasError: true, error }; }
+            componentDidCatch(error, errorInfo) { console.error("Uncaught error:", error, errorInfo); }
+            handleReset = () => {
+                if (confirm("To usunie wszystkie dane aplikacji i przywróci ustawienia fabryczne. Kontynuować?")) {
+                    localStorage.clear();
+                    window.location.reload();
+                }
+            }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-slate-900 text-white">
+                            <h1 className="text-2xl font-bold text-red-500 mb-4">Wystąpił błąd aplikacji</h1>
+                            <p className="mb-6 text-slate-400">Przepraszamy, coś poszło nie tak z danymi lub kodem.</p>
+                            <button onClick={this.handleReset} className="px-6 py-3 bg-red-600 rounded-lg font-bold text-white hover:bg-red-700 transition">Napraw (Zresetuj dane)</button>
+                            <p className="mt-8 text-xs text-slate-600 font-mono text-left w-full overflow-auto p-4 bg-slate-800 rounded">{this.state.error && this.state.error.toString()}</p>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
+        // --- IKONY ---
+        const IconBase = ({ children, className, onClick }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} onClick={onClick}>{children}</svg>
+        );
+        const Pill = (p) => <IconBase {...p}><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" /><path d="m8.5 8.5 7 7" /></IconBase>;
+        const Moon = (p) => <IconBase {...p}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></IconBase>;
+        const Sun = (p) => <IconBase {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></IconBase>;
+        const AlertTriangle = (p) => <IconBase {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></IconBase>;
+        const Scale = (p) => <IconBase {...p}><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" /><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" /><path d="M7 21h10" /><path d="M12 3v18" /><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" /></IconBase>;
+        const Syringe = (p) => <IconBase {...p}><path d="m18 2 4 4" /><path d="m17 7 3-3" /><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5" /><path d="m9 11 4 4" /><path d="m5 19-3 3" /><path d="m14 4 6 6" /></IconBase>;
+        const History = (p) => <IconBase {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12" /><path d="M3 3v9h9" /><path d="M12 7v5l4 2" /></IconBase>;
+        const Info = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></IconBase>;
+        const Clock = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></IconBase>;
+        const Trash2 = (p) => <IconBase {...p}><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></IconBase>;
+        const Smartphone = (p) => <IconBase {...p}><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /><path d="M12 18h.01" /></IconBase>;
+        const X = (p) => <IconBase {...p}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></IconBase>;
+        const Calendar = (p) => <IconBase {...p}><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></IconBase>;
+        const Check = (p) => <IconBase {...p}><path d="M20 6 9 17l-5-5" /></IconBase>;
+        const Thermometer = (p) => <IconBase {...p}><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z" /></IconBase>;
+        const Activity = (p) => <IconBase {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></IconBase>;
+        const Copy = (p) => <IconBase {...p}><rect width="13" height="13" x="9" y="9" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></IconBase>;
+        const User = (p) => <IconBase {...p}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></IconBase>;
+        const Plus = (p) => <IconBase {...p}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></IconBase>;
+        const Download = (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></IconBase>;
+        const Upload = (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></IconBase>;
+        const ShieldCheck = (p) => <IconBase {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></IconBase>;
+        const TabletIcon = (p) => <IconBase {...p}><circle cx="7" cy="7" r="5" /><circle cx="17" cy="17" r="5" /><path d="M12 17h10" /><path d="m3.46 10.54 7.08-7.08" /></IconBase>;
+        const Sparkles = (p) => <IconBase {...p}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M9 5h4" /><path d="M18 18v4" /><path d="M15 20h4" /></IconBase>;
+        const Send = (p) => <IconBase {...p}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></IconBase>;
+        const Edit = (p) => <IconBase {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></IconBase>;
+
+        // --- CONFIG ---
+        const SAFETY_LIMITS = { weightWarningThreshold: 40 };
+        const DRUG_CONFIG = {
+            paracetamol: {
+                pediatric: {
+                    name: "Paracetamol",
+                    concentrations: [
+                        { label: "Syrop standard 120mg/5ml (np. Apap, Panadol)", mg: 120, ml: 5, type: 'liquid' },
+                        { label: "Syrop FORTE 240mg/5ml (np. Apap Forte)", mg: 240, ml: 5, type: 'liquid' },
+                        { label: "Krople 100mg/ml (np. Pedicetamol)", mg: 100, ml: 1, type: 'liquid' },
+                        { label: "Syrop 200mg/5ml (mniej typowe)", mg: 200, ml: 5, type: 'liquid' },
+                        { label: "Czopki 50mg", mg: 50, ml: 1, type: 'tablet', unit: 'czopek' },
+                        { label: "Czopki 80mg", mg: 80, ml: 1, type: 'tablet', unit: 'czopek' },
+                        { label: "Czopki 125mg", mg: 125, ml: 1, type: 'tablet', unit: 'czopek' },
+                        { label: "Czopki 250mg", mg: 250, ml: 1, type: 'tablet', unit: 'czopek' },
+                    ],
+                    minPerKg: 10, maxPerKg: 15, dailyMaxPerKg: 90, interval: "4-6"
+                },
+                adult: {
+                    name: "Paracetamol (Dorośli)",
+                    concentrations: [
+                        { label: "Tabletka 500mg (Apap, Panadol)", mg: 500, ml: 1, type: 'tablet', unit: 'szt.' },
+                        { label: "Tabletka 1000mg (Efferalgan)", mg: 1000, ml: 1, type: 'tablet', unit: 'szt.' },
+                    ],
+                    fixedMin: 500, fixedMax: 1000, dailyMaxTotal: 4000, interval: "4-6"
+                }
+            },
+            ibuprofen: {
+                pediatric: {
+                    name: "Ibuprofen",
+                    concentrations: [
+                        { label: "Syrop FORTE 200mg/5ml (Ibum, Nurofen, Ibufen)", mg: 200, ml: 5, type: 'liquid' },
+                        { label: "Syrop standard 100mg/5ml (Ibum, Nurofen)", mg: 100, ml: 5, type: 'liquid' },
+                        { label: "Czopki 60mg", mg: 60, ml: 1, type: 'tablet', unit: 'czopek' },
+                        { label: "Czopki 125mg", mg: 125, ml: 1, type: 'tablet', unit: 'czopek' },
+                    ],
+                    minPerKg: 5, maxPerKg: 10, dailyMaxPerKg: 40, interval: "6-8"
+                },
+                adult: {
+                    name: "Ibuprofen (Dorośli)",
+                    concentrations: [
+                        { label: "Tabletka 200mg (Ibuprofen, Ibum)", mg: 200, ml: 1, type: 'tablet', unit: 'szt.' },
+                        { label: "Tabletka 400mg (Ibuprofen Forte)", mg: 400, ml: 1, type: 'tablet', unit: 'szt.' },
+                    ],
+                    fixedMin: 200, fixedMax: 400, dailyMaxTotal: 1200, interval: "6-8"
+                }
+            }
+        };
+
+        // --- GEMINI HELPER ---
+        async function callGemini(prompt, systemContext) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemContext }] }
+            };
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            const data = await response.json();
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || "Brak odpowiedzi.";
+        }
+
+        // --- KOMPONENTY POMOCNICZE ---
+
+        const NavButton = ({ active, onClick, icon, label, isDarkMode }) => (
+            <button
+                onClick={onClick}
+                className={`flex flex-col items-center gap-1 w-16 transition-colors ${active
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                    }`}
+            >
+                {icon}
+                <span className="text-[10px] font-medium">{label}</span>
+            </button>
+        );
+
+        const DashboardSummary = ({ history }) => {
+            if (!history || history.length === 0) return (
+                <div className="bg-slate-800 text-slate-300 p-4 rounded-xl mb-4 text-sm text-center">
+                    Brak ostatnich podań leków.
+                </div>
+            );
+
+            const lastDose = history
+                .filter(h => h.type !== 'temp' && h.drug !== 'Pomiar')
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+
+            if (!lastDose) return (
+                <div className="bg-slate-800 text-slate-300 p-4 rounded-xl mb-4 text-sm text-center">
+                    Brak ostatnich podań leków.
+                </div>
+            );
+
+            const now = new Date();
+            const doseTime = new Date(lastDose.timestamp);
+            const diffMs = now - doseTime;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+            return (
+                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-xl shadow-md mb-4">
+                    <div className="text-xs uppercase font-bold text-emerald-100 opacity-80 mb-1">Ostatnio podano</div>
+                    <div className="font-bold text-lg">{lastDose.drug}</div>
+                    <div className="flex justify-between items-end mt-1">
+                        <div className="text-sm">
+                            {diffHours > 0 ? `${diffHours}h ` : ''}{diffMins}min temu
+                        </div>
+                        <div className="text-xs opacity-75">
+                            {doseTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const TemperatureChart = ({ history }) => {
+            const [selectedPoint, setSelectedPoint] = useState(null);
+
+            const data = useMemo(() => {
+                if (!history) return [];
+                return history
+                    .filter(item => item.temperature && !isNaN(parseFloat(item.temperature)))
+                    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+                    .map(item => ({
+                        id: item.id,
+                        val: parseFloat(item.temperature),
+                        time: new Date(item.timestamp),
+                        drug: item.type !== 'temp' && item.drug !== 'Pomiar' ? item.drug : null
+                    }));
+            }, [history]);
+
+            if (data.length < 2) {
+                return (
+                    <div className="flex flex-col items-center justify-center h-48 text-slate-400">
+                        <Activity className="h-8 w-8 mb-2 opacity-50" />
+                        <span className="text-sm">Dodaj co najmniej 2 pomiary temperatury, aby zobaczyć wykres.</span>
+                    </div>
+                );
+            }
+
+            const width = 100;
+            const height = 50;
+            const paddingLeft = 8;  // Zwiększony lewy padding dla etykiet
+            const paddingRight = 5;
+            const paddingTop = 5;
+            const paddingBottom = 5;
+
+            const maxTemp = Math.max(...data.map(d => d.val), 39.5);
+            const minTemp = Math.min(...data.map(d => d.val), 36.0);
+            const range = maxTemp - minTemp || 1;
+
+            const minTime = data[0].time.getTime();
+            const maxTime = data[data.length - 1].time.getTime();
+            const timeRange = maxTime - minTime;
+
+            const getX = (time) => ((time.getTime() - minTime) / (timeRange || 1)) * (width - paddingLeft - paddingRight) + paddingLeft;
+            const getY = (temp) => height - paddingBottom - ((temp - minTemp) / range) * (height - paddingTop - paddingBottom);
+
+            const points = data.map(d => `${getX(d.time)},${getY(d.val)}`).join(' ');
+
+            const feverY = getY(38);
+            const showFeverLine = feverY >= paddingTop && feverY <= height - paddingBottom;
+
+            return (
+                <div className="w-full relative">
+                    <div className="h-48 relative" onClick={() => setSelectedPoint(null)}>
+                        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+                            {[37, 38, 39, 40].map(t => {
+                                const y = getY(t);
+                                if (y < 0 || y > height) return null;
+                                return (
+                                    <g key={t}>
+                                        <line x1={paddingLeft} y1={y} x2={width} y2={y} stroke="currentColor" strokeOpacity="0.1" strokeWidth="0.2" strokeDasharray="1,1" />
+                                        <text x="1" y={y} dy="1.5" fontSize="3" fill="currentColor" opacity="0.4" textAnchor="start">{t}°</text>
+                                    </g>
+                                );
+                            })}
+
+                            {showFeverLine && (
+                                <line x1="0" y1={feverY} x2={width} y2={feverY} stroke="#ef4444" strokeOpacity="0.5" strokeWidth="0.3" strokeDasharray="2,1" />
+                            )}
+
+                            <defs>
+                                <linearGradient id="tempGradient" x1="0" x2="0" y1="0" y2="1">
+                                    <stop offset="0%" stopColor="#ef4444" />
+                                    <stop offset="100%" stopColor="#f59e0b" />
+                                </linearGradient>
+                            </defs>
+                            <polyline points={points} fill="none" stroke="url(#tempGradient)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+
+                            {data.map((d) => (
+                                <g key={d.id} onClick={(e) => { e.stopPropagation(); setSelectedPoint(d); }}>
+                                    <circle cx={getX(d.time)} cy={getY(d.val)} r="4" fill="transparent" />
+                                    <circle
+                                        cx={getX(d.time)}
+                                        cy={getY(d.val)}
+                                        r={selectedPoint?.id === d.id ? "2.5" : "1.5"}
+                                        fill={d.val >= 38 ? "#ef4444" : "#f59e0b"}
+                                        stroke="white"
+                                        strokeWidth="0.5"
+                                    />
+                                </g>
+                            ))}
+                        </svg>
+
+                        {selectedPoint && (
+                            <div className="absolute bg-slate-800 text-white text-xs p-2 rounded shadow-lg border border-slate-700 z-10 pointer-events-none transform -translate-x-1/2 -translate-y-full"
+                                style={{
+                                    left: `${(getX(selectedPoint.time) / width) * 100}%`,
+                                    top: `${(getY(selectedPoint.val) / height) * 100}%`,
+                                    marginTop: '-10px'
+                                }}>
+                                <div className="font-bold">{selectedPoint.val}°C</div>
+                                <div className="text-slate-300">{selectedPoint.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                {selectedPoint.drug && <div className="text-emerald-400 mt-1">{selectedPoint.drug}</div>}
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-400 mt-2">
+                        <span>{data[0].time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>{data[data.length - 1].time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                </div>
+            );
+        };
+
+        const AIAssistant = ({ activeProfile }) => {
+            const [query, setQuery] = useState('');
+            const [response, setResponse] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleAsk = async () => {
+                if (!query.trim()) return;
+                setLoading(true);
+                setResponse('');
+
+                let context = `Brak profilu.`;
+                if (activeProfile && activeProfile.history) {
+                    const lastMeds = activeProfile.history.slice(0, 5).map(h =>
+                        `${new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}: ${h.drug} ${h.doseMl}${h.unit} (${h.temperature ? h.temperature + '°C' : ''})`
+                    ).join('; ');
+                    context = `Profil pacjenta: ${activeProfile.name}, Waga: ${activeProfile.weight}kg.\nOstatnie podania leków (max 5): ${lastMeds || 'brak'}.`;
+                }
+
+                const systemPrompt = `Jesteś pomocnym, empatycznym asystentem medycznym dla rodziców. DANE PACJENTA: ${context}. Odpowiadaj zwięźle. ZAWSZE dodaj info o kontakcie z lekarzem.`;
+
+                try {
+                    const aiReply = await callGemini(query, systemPrompt);
+                    setResponse(aiReply);
+                } catch (err) {
+                    setResponse("Błąd połączenia. Spróbuj później.");
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-[calc(100vh-200px)]">
+                    <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-4 text-white shadow-lg mb-4">
+                        <h2 className="font-bold flex items-center gap-2 text-lg"><Sparkles className="h-5 w-5" /> Asystent AI</h2>
+                        <p className="text-xs text-indigo-100 opacity-90 mt-1">Zapytaj o objawy lub dawkowanie.</p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-4">
+                        {response ? (
+                            <div className="prose dark:prose-invert prose-sm max-w-none text-slate-800 dark:text-slate-200 whitespace-pre-wrap">{response}</div>
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center text-slate-400 text-center p-4">
+                                <Sparkles className="h-12 w-12 mb-3 text-indigo-200 dark:text-slate-600" />
+                                <p className="text-sm">W czym mogę pomóc?</p>
+                            </div>
+                        )}
+                        {loading && <div className="text-center text-indigo-500 mt-2">Piszę...</div>}
+                    </div>
+                    <div className="relative">
+                        <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAsk()} placeholder="Wpisz pytanie..." className="w-full p-4 pr-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800 dark:text-white" />
+                        <button onClick={handleAsk} disabled={loading || !query.trim()} className="absolute right-2 top-2 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"><Send className="h-5 w-5" /></button>
+                    </div>
+                </div>
+            );
+        };
+
+        const DrugCard = ({
+            config, color, subtitles, weight, onInitiateDose, warning, history, isDarkMode
+        }) => {
+            const [selectedConcIndex, setSelectedConcIndex] = useState(0);
+            const [timeLeft, setTimeLeft] = useState(null);
+
+            const selectedConc = config.concentrations[selectedConcIndex] || config.concentrations[0];
+            const isTablet = selectedConc.type === 'tablet';
+            const unit = selectedConc.unit || 'ml';
+
+            let minDoseMg, maxDoseMg, dailyMaxMg;
+            if (config.fixedMin) {
+                minDoseMg = config.fixedMin;
+                maxDoseMg = config.fixedMax;
+                dailyMaxMg = config.dailyMaxTotal;
+            } else {
+                minDoseMg = Math.round(weight * config.minPerKg);
+                maxDoseMg = Math.round(weight * config.maxPerKg);
+                dailyMaxMg = weight * config.dailyMaxPerKg;
+            }
+
+            const minDoseVal = ((minDoseMg * selectedConc.ml) / selectedConc.mg);
+            const maxDoseVal = ((maxDoseMg * selectedConc.ml) / selectedConc.mg);
+            const minDoseDisplay = isTablet ? minDoseVal : minDoseVal.toFixed(1);
+            const maxDoseDisplay = isTablet ? maxDoseVal : maxDoseVal.toFixed(1);
+
+            const drugNameBase = config.name.split(' ')[0];
+            const lastDose = history
+                ? history
+                    .filter(h => h.drug.startsWith(drugNameBase) && h.drug !== 'Pomiar')
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
+                : null;
+
+            const nextDoseTime = lastDose ? new Date(lastDose.nextDose) : null;
+            const canGiveNow = !lastDose || new Date() > nextDoseTime;
+
+            useEffect(() => {
+                if (!nextDoseTime || canGiveNow) { setTimeLeft(null); return; }
+                const interval = setInterval(() => {
+                    const now = new Date();
+                    const diff = nextDoseTime - now;
+                    if (diff <= 0) {
+                        setTimeLeft(null);
+                        clearInterval(interval);
+                    } else {
+                        const hours = Math.floor(diff / (1000 * 60 * 60));
+                        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                        setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+                    }
+                }, 1000);
+                return () => clearInterval(interval);
+            }, [nextDoseTime, canGiveNow]);
+
+            const oneDayAgo = new Date().getTime() - (24 * 60 * 60 * 1000);
+            const usedMg24h = history
+                ? history
+                    .filter(h => h.drug.startsWith(config.name.split(' ')[0]) && new Date(h.timestamp).getTime() > oneDayAgo && h.drug !== 'Pomiar')
+                    .reduce((acc, curr) => acc + curr.doseMg, 0)
+                : 0;
+
+            const percentUsed = Math.min(100, (usedMg24h / dailyMaxMg) * 100);
+            const isLimitNear = percentUsed > 75;
+            const hoursInterval = parseInt(config.interval.split('-')[0]);
+
+            const theme = isDarkMode
+                ? (color === 'blue' ? { bg: 'bg-blue-900/20', border: 'border-blue-800', title: 'text-blue-400', btn: 'bg-blue-600 hover:bg-blue-500' } : { bg: 'bg-orange-900/20', border: 'border-orange-800', title: 'text-orange-400', btn: 'bg-orange-600 hover:bg-orange-500' })
+                : (color === 'blue' ? { bg: 'bg-blue-50', border: 'border-blue-200', title: 'text-blue-700', btn: 'bg-blue-600 hover:bg-blue-700' } : { bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700', btn: 'bg-orange-600 hover:bg-orange-700' });
+
+            return (
+                <div className={`rounded-xl shadow-sm border-2 overflow-hidden transition-colors ${theme.border} ${isDarkMode ? 'bg-slate-800' : 'bg-white'}`}>
+                    <div className={`p-4 border-b ${theme.bg} ${theme.border} transition-colors`}>
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h2 className={`text-xl font-bold ${theme.title}`}>{config.name}</h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{subtitles.join(', ')}</p>
+                            </div>
+                            {lastDose && (
+                                <div className="text-right">
+                                    <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold mb-1">Następna dawka</div>
+                                    {timeLeft ? (
+                                        <div className="font-mono text-lg font-bold text-slate-800 dark:text-white tabular-nums leading-none">{timeLeft}</div>
+                                    ) : (
+                                        <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/50 px-2 py-1 rounded animate-pulse">MOŻNA PODAĆ</div>
+                                    )}
+                                    <div className="text-[10px] text-slate-400 mt-1">Godzina: {new Date(lastDose.nextDose).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="p-4 space-y-4">
+                        <div className="mb-2">
+                            <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 mb-1">
+                                <span>Limit dobowy (24h)</span>
+                                <span className={isLimitNear ? 'text-red-500' : ''}>{Math.round(usedMg24h)} / {Math.round(dailyMaxMg)} mg</span>
+                            </div>
+                            <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full transition-all duration-500 ${isLimitNear ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${percentUsed}%` }}></div>
+                            </div>
+                            {isLimitNear && <div className="text-[10px] text-red-500 mt-1 font-bold">Uwaga: Zbliżasz się do maksymalnej dawki dobowej!</div>}
+                        </div>
+                        {warning && (
+                            <div className="text-xs text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-100 dark:border-red-800/50 flex gap-2">
+                                <AlertTriangle className="h-4 w-4 shrink-0" /> {warning}
+                            </div>
+                        )}
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Wybierz formę leku</label>
+                            <select className="w-full p-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded text-sm text-slate-700 dark:text-slate-200 outline-none focus:border-emerald-500 transition-colors" value={selectedConcIndex} onChange={(e) => setSelectedConcIndex(Number(e.target.value))}>
+                                {config.concentrations.map((c, idx) => (<option key={idx} value={idx}>{c.label}</option>))}
+                            </select>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg text-center border border-slate-100 dark:border-slate-700 transition-colors">
+                            <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Zalecana dawka jednorazowa:</div>
+                            <div className={`text-3xl font-bold ${theme.title}`}>{minDoseDisplay} - {maxDoseDisplay} {unit}</div>
+                            <div className="text-xs text-slate-400 mt-1">({minDoseMg} - {maxDoseMg} mg)</div>
+                            <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-2 bg-white dark:bg-slate-800 inline-block px-3 py-1 rounded-full shadow-sm border border-slate-100 dark:border-slate-700">Co {config.interval} godzin</div>
+                        </div>
+                        <button onClick={() => onInitiateDose(config.name, maxDoseMg, maxDoseDisplay, hoursInterval, unit)} className={`w-full py-3 rounded-lg text-white font-bold shadow-sm active:scale-95 transition-transform flex items-center justify-center gap-2 ${theme.btn}`}>
+                            <Clock className="h-5 w-5" /> Zapisz podanie ({maxDoseDisplay} {unit})
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- GŁÓWNY KOMPONENT APP ---
+        function App() {
+            const [profiles, setProfiles] = useState(() => {
+                const saved = localStorage.getItem('profiles');
+                return saved ? JSON.parse(saved) : [];
+            });
+            const [activeProfileId, setActiveProfileId] = useState(() => {
+                return localStorage.getItem('activeProfileId') || null;
+            });
+            const [currentView, setCurrentView] = useState('dashboard');
+            const [isDarkMode, setIsDarkMode] = useState(true);
+            const [historyFilter, setHistoryFilter] = useState('all');
+
+            // Hooki dla ekranu "Nowy profil" - muszą być zawsze na górze
+            const [showNewProfile, setShowNewProfile] = useState(false);
+            const [newName, setNewName] = useState('');
+            const [newWeight, setNewWeight] = useState('');
+            const [newIsPediatric, setNewIsPediatric] = useState(true);
+
+            const activeProfile = profiles.find(p => p.id === activeProfileId);
+
+
+            useEffect(() => {
+                localStorage.setItem('profiles', JSON.stringify(profiles));
+            }, [profiles]);
+
+            useEffect(() => {
+                if (activeProfileId) {
+                    localStorage.setItem('activeProfileId', activeProfileId);
+                }
+            }, [activeProfileId]);
+
+            const addProfile = (name, weight, isPediatric) => {
+                const newProfile = {
+                    id: Date.now().toString(),
+                    name,
+                    weight: parseFloat(weight),
+                    isPediatric,
+                    history: [],
+                    createdAt: new Date().toISOString()
+                };
+                setProfiles([...profiles, newProfile]);
+                setActiveProfileId(newProfile.id);
+                setCurrentView('dashboard');
+            };
+
+            const deleteProfile = (id) => {
+                if (confirm('Czy na pewno usunąć ten profil?')) {
+                    setProfiles(profiles.filter(p => p.id !== id));
+                    if (activeProfileId === id) {
+                        setActiveProfileId(null);
+                        setCurrentView('dashboard');
+                    }
+                }
+            };
+
+            const addToHistory = (drug, doseMg, doseMl, unit, temperature, hoursInterval) => {
+                if (!activeProfile) return;
+                const timestamp = new Date().toISOString();
+                const nextDose = new Date(Date.now() + hoursInterval * 60 * 60 * 1000).toISOString();
+
+                const entry = {
+                    id: Date.now().toString(),
+                    type: temperature ? 'both' : 'dose',
+                    drug,
+                    doseMg,
+                    doseMl,
+                    unit,
+                    temperature,
+                    timestamp,
+                    nextDose
+                };
+
+                const updatedProfiles = profiles.map(p =>
+                    p.id === activeProfileId
+                        ? { ...p, history: [entry, ...p.history] }
+                        : p
+                );
+                setProfiles(updatedProfiles);
+            };
+
+            const addTemperature = (temp) => {
+                if (!activeProfile) return;
+                const entry = {
+                    id: Date.now().toString(),
+                    type: 'temp',
+                    drug: 'Pomiar',
+                    temperature: temp,
+                    timestamp: new Date().toISOString()
+                };
+                const updatedProfiles = profiles.map(p =>
+                    p.id === activeProfileId
+                        ? { ...p, history: [entry, ...p.history] }
+                        : p
+                );
+                setProfiles(updatedProfiles);
+            };
+
+            const deleteHistoryItem = (id) => {
+                if (!activeProfile) return;
+                const updatedProfiles = profiles.map(p =>
+                    p.id === activeProfileId
+                        ? { ...p, history: p.history.filter(h => h.id !== id) }
+                        : p
+                );
+                setProfiles(updatedProfiles);
+            };
+
+            const updateHistoryItem = (id, updates) => {
+                if (!activeProfile) return;
+                const updatedProfiles = profiles.map(p =>
+                    p.id === activeProfileId
+                        ? { ...p, history: p.history.map(h => h.id === id ? { ...h, ...updates } : h) }
+                        : p
+                );
+                setProfiles(updatedProfiles);
+                setEditingItem(null);
+            };
+
+            const exportReport = () => {
+                if (!activeProfile || !activeProfile.history) return;
+                const filtered = activeProfile.history
+                    .filter(h => h.drug !== 'Pomiar')
+                    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                let report = `📋 Raport Leków - ${activeProfile.name}\n\n`;
+                filtered.forEach(h => {
+                    const date = new Date(h.timestamp).toLocaleString('pl-PL');
+                    report += `${date}: ${h.drug} ${h.doseMl}${h.unit} (${h.doseMg}mg)`;
+                    if (h.temperature) report += ` - Temp: ${h.temperature}°C`;
+                    report += `\n`;
+                });
+
+                navigator.clipboard.writeText(report);
+                alert('✅ Raport skopiowany do schowka!');
+            };
+
+            const [doseModalData, setDoseModalData] = useState(null);
+            const [editingItem, setEditingItem] = useState(null);
+
+            const openDoseModal = (drugName, doseMg, doseVal, hoursInterval, unit) => {
+                setDoseModalData({ drugName, doseMg, doseVal, hoursInterval, unit });
+            };
+
+            const confirmDose = (temperature) => {
+                if (!doseModalData) return;
+                addToHistory(
+                    doseModalData.drugName,
+                    doseModalData.doseMg,
+                    doseModalData.doseVal,
+                    doseModalData.unit,
+                    temperature || null,
+                    doseModalData.hoursInterval
+                );
+                setDoseModalData(null);
+            };
+
+            const exportData = () => {
+                const dataStr = JSON.stringify({ profiles, activeProfileId }, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `kalkulator_goraczki_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+            };
+
+            const importData = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.profiles) {
+                            setProfiles(data.profiles);
+                            setActiveProfileId(data.activeProfileId || null);
+                            alert('Dane zaimportowane pomyślnie!');
+                        }
+                    } catch (err) {
+                        alert('Błąd importu danych!');
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            // --- WIDOK DASHBOARD ---
+            const DashboardView = () => (
+                <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
+                    <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl shadow-md p-4 text-white">
+                        <div className="flex items-center gap-3">
+                            <User className="h-8 w-8" />
+                            <div>
+                                <h1 className="text-2xl font-bold">{activeProfile.name}</h1>
+                                <p className="text-sm text-emerald-100">{activeProfile.weight} kg</p>
+                            </div>
+                        </div>
+                    </div>
+                    <DashboardSummary history={activeProfile.history} />
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 border border-slate-200 dark:border-slate-700">
+                        <h2 className="text-sm font-bold uppercase text-slate-400 mb-3 flex items-center gap-2">
+                            <Activity className="h-4 w-4" /> Wykres temperatury
+                        </h2>
+                        <TemperatureChart history={activeProfile.history} />
+                    </div>
+                    <button
+                        onClick={() => {
+                            const temp = prompt('Podaj temperaturę (°C):');
+                            if (temp && !isNaN(parseFloat(temp))) {
+                                addTemperature(parseFloat(temp));
+                            }
+                        }}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow-sm flex items-center justify-center gap-2"
+                    >
+                        <Thermometer className="h-5 w-5" /> Dodaj pomiar temperatury
+                    </button>
+                </div>
+            );
+
+            // --- WIDOK KALKULATOR ---
+            const CalculatorView = () => {
+                // Automatyczne przełączanie na tryb pediatryczny dla wagi < 40kg
+                const isPediatric = activeProfile.weight < SAFETY_LIMITS.weightWarningThreshold;
+                const paracetamolConfig = isPediatric ? DRUG_CONFIG.paracetamol.pediatric : DRUG_CONFIG.paracetamol.adult;
+                const ibuprofenConfig = isPediatric ? DRUG_CONFIG.ibuprofen.pediatric : DRUG_CONFIG.ibuprofen.adult;
+                const warning = !isPediatric && activeProfile.weight < SAFETY_LIMITS.weightWarningThreshold
+                    ? "Uwaga: Waga poniżej 40kg - zalecane dawki pediatryczne!"
+                    : null;
+
+
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
+                        <DrugCard
+                            config={paracetamolConfig}
+                            color="blue"
+                            subtitles={["Przeciwbólowy", "Przeciwgorączkowy"]}
+                            weight={activeProfile.weight}
+                            onInitiateDose={openDoseModal}
+                            warning={warning}
+                            history={activeProfile.history}
+                            isDarkMode={isDarkMode}
+                        />
+                        <DrugCard
+                            config={ibuprofenConfig}
+                            color="orange"
+                            subtitles={["Przeciwbólowy", "Przeciwgorączkowy", "Przeciwzapalny"]}
+                            weight={activeProfile.weight}
+                            onInitiateDose={openDoseModal}
+                            warning={warning}
+                            history={activeProfile.history}
+                            isDarkMode={isDarkMode}
+                        />
+                    </div>
+                );
+            };
+
+            // --- WIDOK HISTORIA ---
+            const HistoryView = () => {
+                const filteredHistory = activeProfile.history.filter(h => {
+                    if (historyFilter === 'all') return true;
+                    if (historyFilter === 'doses') return h.type !== 'temp';
+                    if (historyFilter === 'temp') return h.type === 'temp';
+                    return true;
+                });
+
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 pb-24">
+                        <button
+                            onClick={exportReport}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg mb-4 flex items-center justify-center gap-2"
+                        >
+                            <Copy className="h-5 w-5" /> Kopiuj raport dla lekarza
+                        </button>
+                        <div className="flex gap-2 mb-4">
+                            {['all', 'doses', 'temp'].map(f => (
+                                <button
+                                    key={f}
+                                    onClick={() => setHistoryFilter(f)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold transition ${historyFilter === f
+                                        ? 'bg-emerald-600 text-white'
+                                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                        }`}
+                                >
+                                    {f === 'all' ? 'Wszystko' : f === 'doses' ? 'Leki' : 'Pomiary'}
+                                </button>
+                            ))}
+                        </div>
+                        {filteredHistory.length === 0 ? (
+                            <div className="text-center text-slate-400 mt-12">
+                                <History className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                                <p>Brak wpisów w historii</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {filteredHistory.map(h => (
+                                    <div
+                                        key={h.id}
+                                        className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-4 border border-slate-200 dark:border-slate-700"
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <div className="font-bold text-lg">{h.drug}</div>
+                                                <div className="text-xs text-slate-500">
+                                                    {new Date(h.timestamp).toLocaleString('pl-PL')}
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => setEditingItem(h)}
+                                                    className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                                                >
+                                                    <Edit className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteHistoryItem(h.id)}
+                                                    className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {h.type !== 'temp' && (
+                                            <div className="text-sm text-slate-600 dark:text-slate-300">
+                                                Dawka: {h.doseMl} {h.unit} ({h.doseMg} mg)
+                                            </div>
+                                        )}
+                                        {h.temperature && (
+                                            <div className="text-sm text-orange-600 dark:text-orange-400 font-bold">
+                                                Temperatura: {h.temperature}°C
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // --- WIDOK USTAWIENIA ---
+            const SettingsView = () => (
+                <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 border border-slate-200 dark:border-slate-700">
+                        <h2 className="font-bold text-lg mb-4">Profile pacjentów</h2>
+                        {profiles.map(p => (
+                            <div
+                                key={p.id}
+                                className={`flex justify-between items-center p-3 mb-2 rounded-lg border-2 ${p.id === activeProfileId
+                                    ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20'
+                                    : 'border-slate-200 dark:border-slate-700'
+                                    }`}
+                            >
+                                <button
+                                    onClick={() => setActiveProfileId(p.id)}
+                                    className="flex-1 text-left"
+                                >
+                                    <div className="font-bold">{p.name}</div>
+                                    <div className="text-xs text-slate-500">{p.weight} kg</div>
+                                </button>
+                                <button
+                                    onClick={() => deleteProfile(p.id)}
+                                    className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 border border-slate-200 dark:border-slate-700 space-y-3">
+                        <h2 className="font-bold text-lg mb-2">Eksport / Import</h2>
+                        <button
+                            onClick={exportData}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"
+                        >
+                            <Download className="h-5 w-5" /> Eksportuj dane
+                        </button>
+                        <label className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 cursor-pointer">
+                            <Upload className="h-5 w-5" /> Importuj dane
+                            <input type="file" accept=".json" onChange={importData} className="hidden" />
+                        </label>
+                    </div>
+                </div>
+            );
+
+            // --- MODAL POTWIERDZENIA DAWKI ---
+            const DoseModal = () => {
+                const [tempInput, setTempInput] = useState('');
+                return (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full p-6">
+                            <h2 className="text-xl font-bold mb-4">Potwierdzenie podania</h2>
+                            <p className="mb-4">
+                                <strong>{doseModalData.drugName}</strong><br />
+                                Dawka: {doseModalData.doseVal} {doseModalData.unit}
+                            </p>
+                            <label className="block mb-4">
+                                <span className="text-sm font-bold text-slate-400 uppercase">Temperatura (opcjonalnie):</span>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={tempInput}
+                                    onChange={(e) => setTempInput(e.target.value)}
+                                    placeholder="np. 38.5"
+                                    className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                                />
+                            </label>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setDoseModalData(null)}
+                                    className="flex-1 bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 rounded-lg"
+                                >
+                                    Anuluj
+                                </button>
+                                <button
+                                    onClick={() => confirmDose(tempInput ? parseFloat(tempInput) : null)}
+                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg"
+                                >
+                                    Zapisz
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // --- MODAL EDYCJI WPISU ---
+            const EditModal = () => {
+                const [editDate, setEditDate] = useState(() => {
+                    const d = new Date(editingItem.timestamp);
+                    return d.toISOString().slice(0, 16);
+                });
+                const [editDose, setEditDose] = useState(editingItem.doseMl || '');
+                const [editTemp, setEditTemp] = useState(editingItem.temperature || '');
+
+                const handleSave = () => {
+                    const updates = {
+                        timestamp: new Date(editDate).toISOString(),
+                    };
+                    if (editingItem.type !== 'temp') {
+                        updates.doseMl = parseFloat(editDose);
+                        // Przelicz mg na podstawie nowej dawki ml
+                        const conc = editingItem.doseMg / editingItem.doseMl;
+                        updates.doseMg = Math.round(parseFloat(editDose) * conc);
+                    }
+                    if (editTemp) {
+                        updates.temperature = parseFloat(editTemp);
+                    } else {
+                        updates.temperature = null;
+                    }
+                    updateHistoryItem(editingItem.id, updates);
+                };
+
+                return (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full p-6">
+                            <h2 className="text-xl font-bold mb-4">Edytuj wpis</h2>
+                            <div className="space-y-4">
+                                <label className="block">
+                                    <span className="text-sm font-bold text-slate-400 uppercase">Data i godzina:</span>
+                                    <input
+                                        type="datetime-local"
+                                        value={editDate}
+                                        onChange={(e) => setEditDate(e.target.value)}
+                                        className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                                    />
+                                </label>
+                                {editingItem.type !== 'temp' && (
+                                    <label className="block">
+                                        <span className="text-sm font-bold text-slate-400 uppercase">Dawka ({editingItem.unit}):</span>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={editDose}
+                                            onChange={(e) => setEditDose(e.target.value)}
+                                            className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                                        />
+                                    </label>
+                                )}
+                                <label className="block">
+                                    <span className="text-sm font-bold text-slate-400 uppercase">Temperatura (°C):</span>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={editTemp}
+                                        onChange={(e) => setEditTemp(e.target.value)}
+                                        placeholder="np. 38.5"
+                                        className="w-full mt-1 p-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg"
+                                    />
+                                </label>
+                            </div>
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setEditingItem(null)}
+                                    className="flex-1 bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 rounded-lg"
+                                >
+                                    Anuluj
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg"
+                                >
+                                    Zapisz
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+
+            // --- EKRAN WYBORU PROFILU ---
+            if (!activeProfile) {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-900 text-white">
+                        <div className="max-w-md w-full">
+                            <div className="text-center mb-8">
+                                <Pill className="h-16 w-16 mx-auto mb-4 text-emerald-400" />
+                                <h1 className="text-3xl font-bold">Kalkulator Gorączki</h1>
+                                <p className="text-slate-400 mt-2">Wybierz profil lub utwórz nowy</p>
+                            </div>
+                            {profiles.length > 0 && (
+                                <div className="mb-6 space-y-2">
+                                    {profiles.map(p => (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => setActiveProfileId(p.id)}
+                                            className="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-lg text-left border-2 border-slate-700"
+                                        >
+                                            <div className="font-bold">{p.name}</div>
+                                            <div className="text-sm text-slate-400">{p.weight} kg</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {!showNewProfile ? (
+                                <button
+                                    onClick={() => setShowNewProfile(true)}
+                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2"
+                                >
+                                    <Plus className="h-5 w-5" /> Nowy profil
+                                </button>
+                            ) : (
+                                <div className="bg-slate-800 p-6 rounded-xl">
+                                    <h2 className="font-bold text-lg mb-4">Nowy profil</h2>
+                                    <input
+                                        type="text"
+                                        placeholder="Imię"
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        className="w-full p-3 mb-3 bg-slate-700 border border-slate-600 rounded-lg"
+                                    />
+                                    <input
+                                        type="number"
+                                        placeholder="Waga (kg)"
+                                        value={newWeight}
+                                        onChange={(e) => setNewWeight(e.target.value)}
+                                        className="w-full p-3 mb-3 bg-slate-700 border border-slate-600 rounded-lg"
+                                    />
+                                    <label className="flex items-center gap-2 mb-4">
+                                        <input
+                                            type="checkbox"
+                                            checked={newIsPediatric}
+                                            onChange={(e) => setNewIsPediatric(e.target.checked)}
+                                            className="w-5 h-5"
+                                        />
+                                        <span className="text-sm">Profil pediatryczny (dziecko)</span>
+                                    </label>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => setShowNewProfile(false)}
+                                            className="flex-1 bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 rounded-lg"
+                                        >
+                                            Anuluj
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (newName && newWeight) {
+                                                    addProfile(newName, newWeight, newIsPediatric);
+                                                    setNewName('');
+                                                    setNewWeight('');
+                                                    setShowNewProfile(false);
+                                                }
+                                            }}
+                                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg"
+                                        >
+                                            Utwórz
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- GŁÓWNY WIDOK Z NAWIGACJĄ ---
+            return (
+                <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 mx-auto max-w-md">
+                    {currentView === 'dashboard' && <DashboardView />}
+                    {currentView === 'calculator' && <CalculatorView />}
+                    {currentView === 'history' && <HistoryView />}
+                    {currentView === 'ai' && <AIAssistant activeProfile={activeProfile} />}
+                    {currentView === 'settings' && <SettingsView />}
+
+                    {doseModalData && <DoseModal />}
+                    {editingItem && <EditModal />}
+
+                    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 safe-area-pb shadow-lg">
+                        <div className="flex justify-around items-center py-2 px-4">
+                            <NavButton active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} icon={<Activity />} label="Start" isDarkMode={isDarkMode} />
+                            <NavButton active={currentView === 'calculator'} onClick={() => setCurrentView('calculator')} icon={<Pill />} label="Leki" isDarkMode={isDarkMode} />
+                            <NavButton active={currentView === 'history'} onClick={() => setCurrentView('history')} icon={<History />} label="Historia" isDarkMode={isDarkMode} />
+                            <NavButton active={currentView === 'ai'} onClick={() => setCurrentView('ai')} icon={<Sparkles />} label="AI" isDarkMode={isDarkMode} />
+                            <NavButton active={currentView === 'settings'} onClick={() => setCurrentView('settings')} icon={<User />} label="Profil" isDarkMode={isDarkMode} />
+                        </div>
+                    </nav>
+                </div>
+            );
+        }
+
+        // --- RENDEROWANIE APLIKACJI ---
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(
+            <ErrorBoundary>
+                <App />
+            </ErrorBoundary>
+        );
+
+    </script>
+</body>
+
+</html>

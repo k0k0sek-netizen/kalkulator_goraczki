@@ -1,0 +1,488 @@
+# Kalkulator Gorączki - Project Rules (Next.js + TypeScript)
+
+## 🛠 Tech Stack (2026 Modern)
+
+- **Framework**: Next.js 15 (App Router)
+- **Language**: TypeScript 5.9+ (Strict Mode)
+- **Styling**: Tailwind CSS v4
+- **UI Components**: shadcn/ui
+- **Icons**: Lucide React
+- **Storage**: IndexedDB via Dexie.js
+- **State**: React 19 Hooks (useState, useReducer, useContext)
+- **AI**: Vercel AI SDK + Google Gemini (optional)
+- **PWA**: next-pwa (planned)
+- **Package Manager**: pnpm
+- **Deployment**: Vercel Edge
+
+## 📂 Project Structure
+
+```
+kalkulator-goraczki/
+├── app/
+│   ├── layout.tsx              # Root layout (dark mode default)
+│   ├── page.tsx                # Dashboard
+│   ├── calculator/
+│   │   └── page.tsx            # Drug calculator
+│   ├── history/
+│   │   └── page.tsx            # History view
+│   ├── profile/
+│   │   └── page.tsx            # Profile management
+│   └── api/
+│       └── ai/
+│           └── route.ts        # Gemini AI endpoint (optional)
+├── components/
+│   ├── ui/                     # shadcn/ui components
+│   ├── drug-card.tsx           # Paracetamol/Ibuprofen cards
+│   ├── temperature-chart.tsx   # SVG chart
+│   ├── profile-selector.tsx    # Multi-profile selector
+│   └── dose-modal.tsx          # Confirmation modal
+├── lib/
+│   ├── db.ts                   # Dexie (IndexedDB) setup
+│   ├── calculations.ts         # Drug dose logic
+│   ├── validations.ts          # Zod schemas
+│   └── utils.ts                # Helpers (cn, formatDate, etc.)
+├── types/
+│   └── index.ts                # TypeScript types/interfaces
+├── public/
+├── package.json
+├── tsconfig.json
+├── tailwind.config.ts
+└── next.config.ts
+```
+
+## 📝 Coding Standards
+
+### TypeScript (Strict Mode)
+
+```typescript
+// tsconfig.json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  }
+}
+```
+
+**CRITICAL Rules**:
+- ✅ NO `any` types - use `unknown` or proper types
+- ✅ NO `@ts-ignore` - fix the issue instead
+- ✅ ALL functions must have return types
+- ✅ ALL interfaces/types must be in `types/index.ts`
+
+### Naming Conventions
+
+| Type | Convention | Example |
+|------|------------|---------|
+| Components | PascalCase | `DrugCard.tsx` |
+| Files | kebab-case | `temperature-chart.tsx` |
+| Functions | camelCase | `calculateDose()` |
+| Types/Interfaces | PascalCase | `Profile`, `HistoryItem` |
+| Constants | UPPER_SNAKE_CASE | `SAFETY_LIMITS` |
+
+### Component Structure
+
+```typescript
+// drug-card.tsx
+import { type FC } from 'react';
+import { Button } from '@/components/ui/button';
+
+interface DrugCardProps {
+  weight: number;
+  config: DrugConfig;
+  onDoseCalculated: (dose: Dose) => void;
+}
+
+export const DrugCard: FC<DrugCardProps> = ({ 
+  weight, 
+  config, 
+  onDoseCalculated 
+}) => {
+  // Hooks first
+  const [selectedConcentration, setSelectedConcentration] = useState<Concentration>(config.concentrations[0]);
+  
+  // Derived values
+  const dose = useMemo(() => calculateDose(weight, config), [weight, config]);
+  
+  // Event handlers
+  const handleConfirm = () => {
+    onDoseCalculated(dose);
+  };
+  
+  // Render
+  return (
+    <div className="...">
+      {/* ... */}
+    </div>
+  );
+};
+```
+
+## 💾 Data Model & Storage
+
+### IndexedDB Schema (Dexie)
+
+```typescript
+// lib/db.ts
+import Dexie, { type EntityTable } from 'dexie';
+
+interface Profile {
+  id: string;
+  name: string;
+  weight: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface HistoryItem {
+  id: string;
+  profileId: string;
+  timestamp: Date;
+  drug: 'Paracetamol' | 'Ibuprofen' | 'Pomiar';
+  doseMl?: number;
+  doseMg?: number;
+  unit?: 'ml' | 'czopek' | 'szt.';
+  temperature?: number;
+  type: 'dose' | 'temp';
+  hoursInterval?: number;
+}
+
+const db = new Dexie('FeverCalcDB') as Dexie & {
+  profiles: EntityTable<Profile, 'id'>;
+  history: EntityTable<HistoryItem, 'id'>;
+};
+
+db.version(1).stores({
+  profiles: '++id, name, createdAt',
+  history: '++id, profileId, timestamp, drug'
+});
+```
+
+### Data Access Patterns
+
+```typescript
+// lib/use-profiles.ts
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from './db';
+
+export const useProfiles = () => {
+  const profiles = useLiveQuery(() => db.profiles.toArray());
+  
+  const addProfile = async (name: string, weight: number) => {
+    await db.profiles.add({
+      id: crypto.randomUUID(),
+      name,
+      weight,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+  };
+  
+  return { profiles, addProfile };
+};
+```
+
+**CRITICAL**: Always use `useLiveQuery` for reactive data - it auto-updates on DB changes!
+
+## 🎨 Tailwind CSS v4 Patterns
+
+### Theme Configuration
+
+```typescript
+// tailwind.config.ts
+import type { Config } from 'tailwindcss';
+
+export default {
+  darkMode: 'class',
+  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        paracetamol: 'hsl(var(--paracetamol))',    // Blue
+        ibuprofen: 'hsl(var(--ibuprofen))',        // Orange
+        fever: 'hsl(var(--fever))',                // Red
+      }
+    }
+  }
+} satisfies Config;
+```
+
+### Component Styling (shadcn/ui pattern)
+
+```typescript
+// Use cn() utility for conditional classes
+import { cn } from '@/lib/utils';
+
+<div className={cn(
+  "base-classes",
+  isPediatric && "pediatric-specific",
+  isHighFever && "text-red-600 dark:text-red-400"
+)} />
+```
+
+## 🧮 Drug Calculation Logic (CRITICAL - Medical Safety)
+
+### Core Rules
+
+```typescript
+// CRITICAL: Weight-based threshold, NOT user input!
+const isPediatric = (weight: number): boolean => {
+  return weight < SAFETY_LIMITS.weightWarningThreshold; // 40kg
+};
+
+// Calculate dose range
+const calculateDose = (
+  weight: number, 
+  config: DrugConfig
+): DoseResult => {
+  const isPed = isPediatric(weight);
+  
+  if (isPed) {
+    const doseMin = weight * config.pediatric.minPerKg;
+    const doseMax = weight * config.pediatric.maxPerKg;
+    return { doseMin, doseMax, isPediatric: true };
+  } else {
+    return { 
+      doseMin: config.adult.fixedMin, 
+      doseMax: config.adult.fixedMax,
+      isPediatric: false 
+    };
+  }
+};
+```
+
+**NEVER**:
+- ❌ Use user checkbox for dose logic
+- ❌ Hardcode dosages
+- ❌ Skip validation
+- ❌ Allow doses outside min/max range
+
+**ALWAYS**:
+- ✅ Calculate from weight
+- ✅ Validate against daily limits
+- ✅ Check interval timing
+- ✅ Confirm with modal before saving
+
+### Validation with Zod
+
+```typescript
+// lib/validations.ts
+import { z } from 'zod';
+
+export const ProfileSchema = z.object({
+  name: z.string().min(1, 'Imię jest wymagane'),
+  weight: z.number()
+    .min(3, 'Waga musi być >= 3kg')
+    .max(150, 'Waga musi być <= 150kg')
+});
+
+export const DoseSchema = z.object({
+  drug: z.enum(['Paracetamol', 'Ibuprofen']),
+  doseMl: z.number().positive(),
+  doseMg: z.number().positive(),
+  temperature: z.number().min(35).max(42).optional()
+});
+```
+
+## 🚨 Error Handling
+
+### Try-Catch Pattern
+
+```typescript
+const addHistoryItem = async (item: HistoryItem) => {
+  try {
+    await db.history.add(item);
+    toast.success('Dawka zapisana');
+  } catch (error) {
+    console.error('Failed to save dose:', error);
+    toast.error('Błąd zapisu. Spróbuj ponownie.');
+  }
+};
+```
+
+### User Feedback (Sonner Toast)
+
+```typescript
+import { toast } from 'sonner';
+
+// Success
+toast.success('Profil utworzony');
+
+// Error
+toast.error('Nie udało się zapisać');
+
+// Warning
+toast.warning('Zbliżasz się do limitu dawki');
+
+// Info
+toast.info('Można podać następną dawkę o 14:30');
+```
+
+## 🤖 AI Integration (Optional)
+
+### Gemini API Route
+
+```typescript
+// app/api/ai/route.ts
+import { StreamingTextResponse } from 'ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+export async function POST(req: Request) {
+  const { history } = await req.json();
+  
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+  const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+  
+  const prompt = `Przeanalizuj historię gorączki: ${JSON.stringify(history)}`;
+  
+  const result = await model.generateContentStream(prompt);
+  return new StreamingTextResponse(result.stream);
+}
+```
+
+### Client Hook
+
+```typescript
+// Use Vercel AI SDK
+import { useChat } from 'ai/react';
+
+const { messages, input, handleSubmit } = useChat({
+  api: '/api/ai',
+  body: { context: medicalData }
+});
+```
+
+## 📱 PWA Configuration (Planned)
+
+```typescript
+// next.config.ts
+import withPWA from 'next-pwa';
+
+export default withPWA({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development'
+})({
+  // Next.js config
+});
+```
+
+## 🧪 Testing (When Implemented)
+
+### Unit Tests (Vitest)
+
+```typescript
+// lib/calculations.test.ts
+import { describe, it, expect } from 'vitest';
+import { calculateDose } from './calculations';
+
+describe('calculateDose', () => {
+  it('should use pediatric doses for 22kg child', () => {
+    const result = calculateDose(22, DRUG_CONFIG.paracetamol);
+    expect(result.isPediatric).toBe(true);
+    expect(result.doseMin).toBe(220);
+  });
+  
+  it('should switch to adult doses at 40kg', () => {
+    const result = calculateDose(40, DRUG_CONFIG.paracetamol);
+    expect(result.isPediatric).toBe(false);
+  });
+});
+```
+
+## 🚀 Deployment (Vercel)
+
+### Environment Variables
+
+```bash
+# .env.local
+GEMINI_API_KEY=your_key_here  # Optional, for AI features
+NEXT_PUBLIC_APP_URL=https://kalkulator-goraczki.vercel.app
+```
+
+### Build Optimization
+
+```typescript
+// next.config.ts
+export default {
+  reactStrictMode: true,
+  swcMinify: true,
+  images: {
+    formats: ['image/avif', 'image/webp']
+  }
+};
+```
+
+## 🔄 Migration from HTML
+
+When converting existing components:
+1. Move component to `components/`
+2. Add TypeScript types
+3. Replace `className` strings with `cn()` utility
+4. Convert LocalStorage to IndexedDB
+5. Add Zod validation
+6. Write tests (optional)
+
+## 📋 Development Workflow
+
+### Daily Checklist
+- [ ] Run `pnpm dev` for hot reload
+- [ ] Check TypeScript errors: `pnpm type-check`
+- [ ] Format code: `pnpm format`
+- [ ] Lint: `pnpm lint`
+- [ ] Test critical paths (dose calculation, storage)
+
+### Before Commit
+- [ ] Zero TypeScript errors
+- [ ] Zero ESLint errors
+- [ ] Test on mobile viewport (DevTools)
+- [ ] Verify dark mode works
+- [ ] Check IndexedDB data persistence
+
+## 🐛 Common Pitfalls
+
+### ❌ DON'T:
+```typescript
+// Using 'any'
+const data: any = await db.profiles.toArray();
+
+// Missing error handling
+await db.history.add(item);
+
+// Hardcoded paths
+import { Button } from '../../../components/ui/button';
+```
+
+### ✅ DO:
+```typescript
+// Proper typing
+const data: Profile[] = await db.profiles.toArray();
+
+// Error handling
+try {
+  await db.history.add(item);
+} catch (error) {
+  toast.error('Failed to save');
+}
+
+// Path aliases
+import { Button } from '@/components/ui/button';
+```
+
+## 🎯 Performance Best Practices
+
+- ✅ Use `useMemo` for expensive calculations
+- ✅ Use `useCallback` for event handlers passed as props
+- ✅ Lazy load heavy components (`next/dynamic`)
+- ✅ Optimize images with `next/image`
+- ✅ Index frequently queried fields in Dexie
+
+---
+
+**Last Updated**: 2026-01-25  
+**Stack Version**: Next.js 15 + TypeScript + Tailwind v4  
+**Project Phase**: Migration from single-file HTML
