@@ -46,15 +46,27 @@ const getBotResponse = (input: string, profile?: Profile): string => {
         return 'Przy drgawkach gorączkowych: Połóż dziecko w bezpiecznej pozycji na boku. Nie wkładaj nic do buzi. Poluzuj ubranie. Jeśli trwają >5 min, wezwij pogotowie (112).';
     }
 
-    return 'Jestem prostym asystentem. Zapytaj mnie o: wymioty po leku, brak spadku gorączki, kiedy do lekarza, lub drgawki. Pamiętaj, że jestem tylko algorytmem!';
+    if (lower.includes('łączyć') || lower.includes('razem')) {
+        return 'Możesz stosować tzw. naprzemienne podawanie leków (Paracetamol i Ibuprofen), ale zachowaj odstępy! Między tym samym lekiem (np. Ibuprofen-Ibuprofen) musi być 6h przerwy. Między różnymi (Paracetamol-Ibuprofen) zazwyczaj 3-4h. Nigdy nie podawaj ich naraz, chyba że lekarz zalecił inaczej.';
+    }
+
+    return 'Jestem prostym asystentem (baza offline). Wybierz jeden z tematów powyżej lub zapytaj o: wymioty, drgawki, łączenie leków, brak poprawy.';
 };
 
 export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssistantProps) {
     const [messages, setMessages] = useState<Message[]>([
-        { id: '1', role: 'assistant', text: 'Cześć! Jestem Twoim wirtualnym asystentem. W czym mogę pomóc? (np. "dziecko zwymiotowało lek")' }
+        { id: '1', role: 'assistant', text: 'Cześć! Jestem Twoim wirtualnym asystentem (offline). Nie korzystam z internetu, ale pomogę Ci w typowych sytuacjach. Wybierz temat poniżej lub napisz pytanie.' }
     ]);
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    const suggestions = [
+        "Dziecko zwymiotowało lek",
+        "Gorączka nie spada",
+        "Kiedy do lekarza?",
+        "Co na drgawki?",
+        "Czy mogę łączyć leki?"
+    ];
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -62,16 +74,16 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
         }
     }, [messages, isOpen]);
 
-    const handleSend = () => {
-        if (!input.trim()) return;
+    const handleSend = (text: string) => {
+        if (!text.trim()) return;
 
-        const userMsg: Message = { id: Date.now().toString(), role: 'user', text: input };
+        const userMsg: Message = { id: Date.now().toString(), role: 'user', text };
         setMessages(prev => [...prev, userMsg]);
         setInput('');
 
         // Simulate AI delay
         setTimeout(() => {
-            const responseText = getBotResponse(userMsg.text, activeProfile);
+            const responseText = getBotResponse(text, activeProfile);
             const botMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', text: responseText };
             setMessages(prev => [...prev, botMsg]);
         }, 600);
@@ -111,10 +123,24 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                                     </div>
                                 ))}
                             </CardContent>
+
+                            {/* Suggestions */}
+                            <div className="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+                                {suggestions.map(s => (
+                                    <button
+                                        key={s}
+                                        onClick={() => handleSend(s)}
+                                        className="whitespace-nowrap px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-full text-xs text-slate-300 transition-colors"
+                                    >
+                                        {s}
+                                    </button>
+                                ))}
+                            </div>
+
                             <CardFooter className="p-3 bg-slate-950/30 border-t border-slate-800">
                                 <form
                                     className="flex w-full gap-2"
-                                    onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+                                    onSubmit={(e) => { e.preventDefault(); handleSend(input); }}
                                 >
                                     <Input
                                         value={input}
