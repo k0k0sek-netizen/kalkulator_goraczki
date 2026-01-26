@@ -13,6 +13,7 @@ import { DRUG_CONFIG } from '@/lib/constants';
 import type { Profile, HistoryItem, DrugType, DoseUnit } from '@/types';
 import { generateId } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { requestNotificationPermission, scheduleNotification } from '@/lib/notifications';
 
 export default function CalculatorPage() {
     const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -46,6 +47,10 @@ export default function CalculatorPage() {
                 console.error('Parse error', e);
             }
         }
+
+        // Ask for notification permission gently
+        // requestNotificationPermission(); 
+        // Better to ask on user interaction, not load.
     }, []);
 
     const handleInitiateMeasurement = () => {
@@ -139,6 +144,23 @@ export default function CalculatorPage() {
         localStorage.setItem('fever-calc-profiles', JSON.stringify(updatedProfiles));
 
         toast.success(`Zapisano podanie: ${editingDose.drugName}`);
+
+        // Schedule Notification
+        requestNotificationPermission().then(granted => {
+            if (granted) {
+                // Interval is in editingDose.interval (hours)
+                // Schedule for interval - 15 mins (warning) or exact time?
+                // Let's do exact time.
+                const minutes = editingDose.interval * 60;
+                scheduleNotification(
+                    "Czas na kolejną dawkę? 💊",
+                    `Minęło ${editingDose.interval}h od podania ${editingDose.drugName}. Sprawdź temperaturę.`,
+                    minutes
+                );
+                toast.info(`Ustawiono przypomnienie za ${editingDose.interval}h 🔔`);
+            }
+        });
+
         setEditingDose(null);
         setTemperature(''); // Clear global temp if set
     };
