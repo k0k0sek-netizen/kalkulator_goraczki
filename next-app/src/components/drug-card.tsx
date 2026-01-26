@@ -54,9 +54,13 @@ export function DrugCard({ weight, config, drugName, color, onDoseCalculated, hi
     }, [history, drugName]);
 
     const dailyMaxMg = weight * 90; // Approx max if not provided (safe fallback)
-    // Actually better to use dose.dailyLimit which is calculated correctly based on logic
-    const limit = dose.dailyLimit;
-    const percentUsed = Math.min(100, (usedMg24h / limit) * 100);
+    // Fix: dose.dailyLimit comes from config. If pediatric, it is mg/kg, so we must multiply by weight.
+    // If adult, it is total mg, so we use it as is.
+    const actualDailyLimit = dose.isPediatric
+        ? dose.dailyLimit * weight
+        : dose.dailyLimit;
+
+    const percentUsed = Math.min(100, (usedMg24h / actualDailyLimit) * 100);
     const isLimitNear = percentUsed > 75;
 
     const handleConfirm = () => {
@@ -90,7 +94,7 @@ export function DrugCard({ weight, config, drugName, color, onDoseCalculated, hi
                     <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 mb-1">
                         <span>Limit dobowy (24h)</span>
                         <span className={cn(isLimitNear && 'text-red-400')}>
-                            {Math.round(usedMg24h)} / {Math.round(limit)} mg
+                            {Math.round(usedMg24h)} / {Math.round(actualDailyLimit)} mg ({Math.round(percentUsed)}%)
                         </span>
                     </div>
                     <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700">
