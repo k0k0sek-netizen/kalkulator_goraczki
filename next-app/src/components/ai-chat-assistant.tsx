@@ -138,7 +138,7 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                                         <X className="h-5 w-5" />
                                     </Button>
                                 </CardHeader>
-                                <CardContent className="flex-1 overflow-y-auto p-4 space-y-4" ref={scrollRef}>
+                                <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar" ref={scrollRef}>
                                     {messages.map(m => (
                                         <div key={m.id} className={cn("flex", m.role === 'user' ? "justify-end" : "justify-start")}>
                                             <div className={cn(
