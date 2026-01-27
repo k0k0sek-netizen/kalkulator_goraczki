@@ -330,60 +330,64 @@ export default function HistoryPage() {
 
                     {/* QR Modal (Simple Overlay) */}
                     {showQr && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowQr(false)}>
-                            <motion.div
-                                initial={{ scale: 0.9, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                className="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full text-center"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <h3 className="text-slate-900 font-bold text-lg mb-4">Zeskanuj pomiary</h3>
-                                <div className="bg-white p-2 inline-block">
-                                    <QRCode value={getQrContent()} size={200} />
-                                </div>
-                                <p className="text-slate-500 text-xs mt-4">
-                                    Pokaż ten kod lekarzowi lub zeskanuj drugim telefonem.
-                                </p>
-                                <Button onClick={() => setShowQr(false)} className="mt-4 w-full" variant="secondary">
-                                    Zamknij
-                                </Button>
-                            </motion.div>
-                        </div>
+                        <ModalPortal>
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowQr(false)}>
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    className="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full text-center"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <h3 className="text-slate-900 font-bold text-lg mb-4">Zeskanuj pomiary</h3>
+                                    <div className="bg-white p-2 inline-block">
+                                        <QRCode value={getQrContent()} size={200} />
+                                    </div>
+                                    <p className="text-slate-500 text-xs mt-4">
+                                        Pokaż ten kod lekarzowi lub zeskanuj drugim telefonem.
+                                    </p>
+                                    <Button onClick={() => setShowQr(false)} className="mt-4 w-full" variant="secondary">
+                                        Zamknij
+                                    </Button>
+                                </motion.div>
+                            </div>
+                        </ModalPortal>
                     )}
 
                     {/* Scanner Modal */}
                     {showScanner && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
-                            <motion.div
-                                initial={{ scale: 0.9, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                className="w-full max-w-sm bg-slate-900 rounded-xl overflow-hidden relative border border-slate-700"
-                            >
-                                <div className="relative aspect-square bg-black">
-                                    <Scanner
-                                        onScan={(result) => {
-                                            if (result && result.length > 0 && result[0]) {
-                                                handleScan(result[0].rawValue);
-                                            }
-                                        }}
-                                        onError={(error: any) => toast.error('Błąd kamery: ' + (error?.message || 'Nieznany błąd'))}
-                                    />
-                                    {/* Crosshair Overlay */}
-                                    <div className="absolute inset-0 border-2 border-emerald-500/50 opacity-50 m-12 rounded-lg pointer-events-none" />
-                                </div>
+                        <ModalPortal>
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    className="w-full max-w-sm bg-slate-900 rounded-xl overflow-hidden relative border border-slate-700"
+                                >
+                                    <div className="relative aspect-square bg-black">
+                                        <Scanner
+                                            onScan={(result) => {
+                                                if (result && result.length > 0 && result[0]) {
+                                                    handleScan(result[0].rawValue);
+                                                }
+                                            }}
+                                            onError={(error: any) => toast.error('Błąd kamery: ' + (error?.message || 'Nieznany błąd'))}
+                                        />
+                                        {/* Crosshair Overlay */}
+                                        <div className="absolute inset-0 border-2 border-emerald-500/50 opacity-50 m-12 rounded-lg pointer-events-none" />
+                                    </div>
 
-                                <div className="p-4 text-center">
-                                    <p className="text-slate-300 text-sm mb-4">Nakieruj kamerę na kod QR z historii innego telefonu.</p>
-                                    <Button
-                                        variant="destructive"
-                                        className="w-full"
-                                        onClick={() => setShowScanner(false)}
-                                    >
-                                        Anuluj
-                                    </Button>
-                                </div>
-                            </motion.div>
-                        </div>
+                                    <div className="p-4 text-center">
+                                        <p className="text-slate-300 text-sm mb-4">Nakieruj kamerę na kod QR z historii innego telefonu.</p>
+                                        <Button
+                                            variant="destructive"
+                                            className="w-full"
+                                            onClick={() => setShowScanner(false)}
+                                        >
+                                            Anuluj
+                                        </Button>
+                                    </div>
+                                </motion.div>
+                            </div>
+                        </ModalPortal>
                     )}
 
                     {/* History list */}

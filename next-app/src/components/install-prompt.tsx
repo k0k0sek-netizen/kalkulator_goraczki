@@ -36,9 +36,20 @@ export function InstallPrompt() {
         if (!deferredPrompt) return;
 
         deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
 
-        if (outcome === 'accepted') {
+        try {
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('User response to the install prompt:', outcome);
+
+            if (outcome === 'accepted') {
+                toast.success('Pomyślnie zainstalowano!');
+            } else {
+                toast.info('Instalacja anulowana');
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            // We can't use the prompt again, so clear it
             setDeferredPrompt(null);
         }
     };
