@@ -104,13 +104,24 @@ export default function Dashboard() {
     return (
         <div className="p-4 space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-emerald-400 mb-1">
-                    🌡️ Kalkulator
-                </h1>
-                <p className="text-slate-400 text-sm">
-                    Twoje centrum zarządzania gorączką
-                </p>
+            <div className="flex items-start justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-emerald-400 mb-1">
+                        🌡️ Kalkulator
+                    </h1>
+                    <p className="text-slate-400 text-sm">
+                        Twoje centrum zarządzania gorączką
+                    </p>
+                </div>
+                {/* AI Assistant Button (Header) */}
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-full border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                    onClick={() => setIsAiChatOpen(true)}
+                >
+                    <Bot className="h-6 w-6" />
+                </Button>
             </div>
 
             {activeProfile ? (
@@ -281,23 +292,6 @@ export default function Dashboard() {
                     </Card>
                 </div>
             )}
-
-            {/* AI Floating Button */}
-            <motion.div
-                className="fixed bottom-20 right-4 z-40"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-            >
-                <Button
-                    size="icon"
-                    className="h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-600 shadow-[0_0_20px_rgba(16,185,129,0.5)] border-2 border-emerald-400"
-                    onClick={() => setIsAiChatOpen(true)}
-                >
-                    <Bot className="h-8 w-8 text-white" />
-                </Button>
-            </motion.div>
 
             {/* AI Chat Modal */}
             <AiChatAssistant
