@@ -122,7 +122,7 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="w-full max-w-md bg-transparent flex flex-col max-h-[85vh] h-[600px]"
+                        className="w-full max-w-md bg-transparent flex flex-col h-[80dvh] max-h-[600px]"
                     >
                         <Card className="flex-1 flex flex-col border-emerald-500/30 bg-slate-900 shadow-2xl">
                             <CardHeader className="flex flex-row items-center justify-between py-3 px-4 border-b border-slate-800">
