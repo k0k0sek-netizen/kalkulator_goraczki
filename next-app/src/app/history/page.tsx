@@ -380,6 +380,41 @@ export default function HistoryPage() {
                         </div>
                     )}
 
+                    {/* Scanner Modal */}
+                    {showScanner && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+                            <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="w-full max-w-sm bg-slate-900 rounded-xl overflow-hidden relative border border-slate-700"
+                            >
+                                <div className="relative aspect-square bg-black">
+                                    <Scanner
+                                        onScan={(result) => {
+                                            if (result && result.length > 0 && result[0]) {
+                                                handleScan(result[0].rawValue);
+                                            }
+                                        }}
+                                        onError={(error: any) => toast.error('Błąd kamery: ' + (error?.message || 'Nieznany błąd'))}
+                                    />
+                                    {/* Crosshair Overlay */}
+                                    <div className="absolute inset-0 border-2 border-emerald-500/50 opacity-50 m-12 rounded-lg pointer-events-none" />
+                                </div>
+
+                                <div className="p-4 text-center">
+                                    <p className="text-slate-300 text-sm mb-4">Nakieruj kamerę na kod QR z historii innego telefonu.</p>
+                                    <Button
+                                        variant="destructive"
+                                        className="w-full"
+                                        onClick={() => setShowScanner(false)}
+                                    >
+                                        Anuluj
+                                    </Button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+
                     {/* History list */}
                     <div className="space-y-3">
                         {sortedHistory.length === 0 ? (
