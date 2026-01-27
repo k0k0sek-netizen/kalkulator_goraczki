@@ -39,6 +39,13 @@ body {
   }
 
   /* Custom Scrollbar */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    /* Firefox */
+    scrollbar-color: rgba(52, 211, 153, 0.6) rgba(15, 23, 42, 0.5);
+    /* Firefox: thumb track */
+  }
+
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
   }
@@ -48,13 +55,13 @@ body {
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(52, 211, 153, 0.3);
-    /* Emerald-400 with opacity */
+    background: rgba(52, 211, 153, 0.6);
+    /* Increased opacity for visibility */
     border-radius: 10px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(52, 211, 153, 0.6);
+    background: rgba(52, 211, 153, 0.8);
   }
 
   /* Recharts Focus Fix */
