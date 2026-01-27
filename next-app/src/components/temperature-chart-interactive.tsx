@@ -113,6 +113,7 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                                 if (active && active[0]) return active[0].payload.fullDate;
                                 return label;
                             }}
+                            wrapperStyle={{ outline: 'none' }}
                         />
                         <ReferenceLine y={38} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: '38°', fill: '#ef4444', fontSize: 10 }} />
                         <Area

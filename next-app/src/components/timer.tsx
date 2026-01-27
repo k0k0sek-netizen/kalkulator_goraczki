@@ -89,7 +89,7 @@ export function LiveTimer({ lastDoseTime, intervalHours, drugName, compact = fal
                     <span className={cn("font-medium", colorClass)}>{drugName}</span>
                     <div className="text-right">
                         <div className="text-xs text-slate-400">kolejna dawka za:</div>
-                        <div className="text-lg font-mono font-bold leading-none">
+                        <div className="text-lg font-mono font-bold leading-none min-w-[90px] tabular-nums flex justify-end">
                             {timeLeft ? (
                                 <>
                                     {timeLeft.hours > 0 && <span>{timeLeft.hours}h </span>}

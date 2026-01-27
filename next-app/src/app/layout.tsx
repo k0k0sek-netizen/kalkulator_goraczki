@@ -47,10 +47,14 @@ export default function RootLayout({
             <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen pb-16`}
             >
-                <div className="max-w-md mx-auto min-h-screen relative">
-                    {children}
+                <div className="mx-auto h-full flex flex-col relative bg-slate-950/20 max-w-md w-full shadow-2xl overflow-hidden rounded-xl border-x border-slate-800/50">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pb-24">
+                        {children}
+                    </div>
                     <BottomNav />
                     <Toaster position="top-center" />
+                    {/* Background glows for layout */}
+                    <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 bg-[radial-gradient(circle_at_50%_0%,rgba(16,185,129,0.1),transparent_50%)]" />
                 </div>
             </body>
         </html>
