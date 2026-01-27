@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { DrugCard } from '@/components/drug-card';
 import { DoseModal } from '@/components/dose-modal'; // New Modal
+import { useProfile } from '@/context/profile-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Thermometer } from 'lucide-react';
@@ -16,8 +17,7 @@ import { motion } from 'framer-motion';
 import { requestNotificationPermission, scheduleNotification } from '@/lib/notifications';
 
 export default function CalculatorPage() {
-    const [profiles, setProfiles] = useState<Profile[]>([]);
-    const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+    const { activeProfile, updateProfile } = useProfile();
     const [temperature, setTemperature] = useState('');
 
     // Modal state
@@ -31,27 +31,7 @@ export default function CalculatorPage() {
         initialTemp?: number;
     } | null>(null);
 
-    const activeProfile = profiles.find(p => p.id === activeProfileId);
-
-    // Load from localStorage
-    useEffect(() => {
-        const saved = localStorage.getItem('fever-calc-profiles');
-        if (saved) {
-            try {
-                const parsed: Profile[] = JSON.parse(saved);
-                setProfiles(parsed);
-                if (parsed.length > 0) {
-                    setActiveProfileId(parsed[0]!.id);
-                }
-            } catch (e) {
-                console.error('Parse error', e);
-            }
-        }
-
-        // Ask for notification permission gently
-        // requestNotificationPermission(); 
-        // Better to ask on user interaction, not load.
-    }, []);
+    // No local Effect for loading profiles anymore!
 
     const handleInitiateMeasurement = () => {
         if (!activeProfile || !temperature) {
@@ -65,22 +45,15 @@ export default function CalculatorPage() {
             return;
         }
 
-        // Open Modal for Measurement
         setEditingDose({
             isOpen: true,
             drugName: 'Pomiar',
             doseMl: 0,
             amountPerMl: 0,
             unit: '',
-            interval: 0
+            interval: 0,
+            initialTemp: temp // Pass temp to modal
         });
-        // We don't clear temperature yet, we pass it to modal via editingDose state?
-        // Actually DoseModal doesn't take 'initialTemperature' from 'editingDose' state directly in the current implementation in Page?
-        // Wait, handleConfirmDose receives data.
-        // I need to make sure DoseModal gets the temperature I just typed.
-        // My DoseModal implementation takes 'initialTemperature' prop.
-        // So I need to add 'initialTemperature' to 'editingDose' state or pass it separately.
-        // Let's modify 'editingDose' state type to include optional initialTemp.
     };
 
     // Instead of saving directly, we open the modal
@@ -138,16 +111,15 @@ export default function CalculatorPage() {
         );
 
         const updatedProfile = { ...activeProfile, history: updatedHistory, updatedAt: new Date() };
-        const updatedProfiles = profiles.map(p => p.id === activeProfile.id ? updatedProfile : p);
 
-        setProfiles(updatedProfiles);
-        localStorage.setItem('fever-calc-profiles', JSON.stringify(updatedProfiles));
+        // Update via Context
+        updateProfile(updatedProfile);
 
         toast.success(`Zapisano podanie: ${editingDose.drugName}`);
 
         // Schedule Notification
         requestNotificationPermission().then(granted => {
-            if (granted) {
+            if (granted && editingDose.interval > 0) {
                 // Interval is in editingDose.interval (hours)
                 // Schedule for interval - 15 mins (warning) or exact time?
                 // Let's do exact time.
@@ -170,9 +142,9 @@ export default function CalculatorPage() {
             <div className="min-h-screen p-4 flex items-center justify-center">
                 <Card>
                     <CardContent className="p-8 text-center">
-                        <p className="text-slate-400 mb-4">Brak profili. Utwórz profil aby kontynuować.</p>
+                        <p className="text-slate-400 mb-4">Wybierz lub utwórz profil, aby korzystać z kalkulatora.</p>
                         <Link href="/">
-                            <Button>Powrót do strony głównej</Button>
+                            <Button>Przejdź do pulpitu</Button>
                         </Link>
                     </CardContent>
                 </Card>

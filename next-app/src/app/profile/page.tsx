@@ -9,39 +9,23 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import type { Profile } from '@/types';
 import { InstallPrompt } from '@/components/install-prompt';
+import { useProfile } from '@/context/profile-context';
 
 export default function ProfilePage() {
-    const [profiles, setProfiles] = useState<Profile[]>([]);
-    const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+    const { profiles, activeProfile, activeProfileId, setActiveProfileId, updateProfile, deleteProfile, setProfiles } = useProfile();
     const [editName, setEditName] = useState('');
     const [editWeight, setEditWeight] = useState('');
 
-    // Load profiles
+    // Sync local edit state with active profile
     useEffect(() => {
-        const saved = localStorage.getItem('fever-calc-profiles');
-        if (saved) {
-            const parsed: Profile[] = JSON.parse(saved);
-            setProfiles(parsed);
-            if (parsed.length > 0) {
-                const firstId = parsed[0]!.id;
-                setActiveProfileId(firstId);
-                setEditName(parsed[0]!.name);
-                setEditWeight(parsed[0]!.weight.toString());
-            }
+        if (activeProfile) {
+            setEditName(activeProfile.name);
+            setEditWeight(activeProfile.weight.toString());
         }
-    }, []);
-
-    const activeProfile = profiles.find(p => p.id === activeProfileId);
+    }, [activeProfile]);
 
     const handleProfileSelect = (id: string) => {
-        const profile = profiles.find(p => p.id === id);
-        if (profile) {
-            setActiveProfileId(id);
-            setEditName(profile.name);
-            setEditWeight(profile.weight.toString());
-            // Global sync
-            localStorage.setItem('fever-calc-active-id', id);
-        }
+        setActiveProfileId(id);
     };
 
     const handleSave = () => {
@@ -53,7 +37,7 @@ export default function ProfilePage() {
             return;
         }
 
-        const updatedProfile = {
+        const updated = {
             ...activeProfile,
             name: editName,
             weight: weight,
@@ -61,12 +45,7 @@ export default function ProfilePage() {
             updatedAt: new Date(),
         };
 
-        const updatedProfiles = profiles.map(p =>
-            p.id === activeProfile.id ? updatedProfile : p
-        );
-
-        setProfiles(updatedProfiles);
-        localStorage.setItem('fever-calc-profiles', JSON.stringify(updatedProfiles));
+        updateProfile(updated);
         toast.success('Profil zaktualizowany');
     };
 
@@ -74,20 +53,7 @@ export default function ProfilePage() {
         if (!activeProfile) return;
         if (!confirm(`Czy na pewno chcesz usunąć profil ${activeProfile.name}?`)) return;
 
-        const updatedProfiles = profiles.filter(p => p.id !== activeProfile.id);
-        setProfiles(updatedProfiles);
-        localStorage.setItem('fever-calc-profiles', JSON.stringify(updatedProfiles));
-
-        if (updatedProfiles.length > 0) {
-            const next = updatedProfiles[0]!;
-            setActiveProfileId(next.id);
-            setEditName(next.name);
-            setEditWeight(next.weight.toString());
-        } else {
-            setActiveProfileId(null);
-            setEditName('');
-            setEditWeight('');
-        }
+        deleteProfile(activeProfile.id);
         toast.success('Profil usunięty');
     };
 
@@ -115,13 +81,12 @@ export default function ProfilePage() {
                 const parsed = JSON.parse(content);
                 if (Array.isArray(parsed)) {
                     setProfiles(parsed);
-                    localStorage.setItem('fever-calc-profiles', JSON.stringify(parsed));
                     toast.success('Dane zaimportowane pomyślnie');
                 } else {
                     toast.error('Nieprawidłowy format pliku');
                 }
             } catch (error) {
-                console.error(error); // Log error
+                console.error(error);
                 toast.error('Błąd podczas importu');
             }
         };

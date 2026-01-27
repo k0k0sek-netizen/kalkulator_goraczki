@@ -1,43 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trash2, Copy, Pencil, Archive, History as HistoryIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Trash2, Copy, Pencil, Archive, History as HistoryIcon } from 'lucide-react';
 import { DoseModal } from '@/components/dose-modal';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import type { Profile, HistoryItem, DoseUnit, PastEpisode } from '@/types';
+import type { Profile, HistoryItem, PastEpisode } from '@/types';
 import { formatDate, generateId } from '@/lib/utils';
 import { generatePdfReport } from '@/lib/pdf-generator';
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from "react-qr-code";
-import { Scanner } from '@yudiel/react-qr-scanner'; // Import scanner
+import { Scanner } from '@yudiel/react-qr-scanner';
+import { ModalPortal } from '@/components/ui/modal-portal';
+import { useProfile } from '@/context/profile-context';
 
 export default function HistoryPage() {
-    const [profiles, setProfiles] = useState<Profile[]>([]);
-    const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+    const { activeProfile, updateProfile } = useProfile();
     const [editingItem, setEditingItem] = useState<HistoryItem | null>(null);
     const [showQr, setShowQr] = useState(false);
     const [showScanner, setShowScanner] = useState(false);
-    const [showArchives, setShowArchives] = useState(false); // Toggle for archives view
-
-    const activeProfile = profiles.find(p => p.id === activeProfileId);
-
-    useEffect(() => {
-        const saved = localStorage.getItem('fever-calc-profiles');
-        if (saved) {
-            try {
-                const parsed: Profile[] = JSON.parse(saved);
-                setProfiles(parsed);
-                if (parsed.length > 0) {
-                    setActiveProfileId(parsed[0]!.id);
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        }
-    }, []);
+    const [showArchives, setShowArchives] = useState(false);
 
     const deleteHistoryItem = (itemId: string) => {
         if (!activeProfile) return;
@@ -48,12 +32,7 @@ export default function HistoryPage() {
                 history: activeProfile.history.filter(h => h.id !== itemId),
             };
 
-            const updatedProfiles = profiles.map(p =>
-                p.id === activeProfile.id ? updatedProfile : p
-            );
-
-            setProfiles(updatedProfiles);
-            localStorage.setItem('fever-calc-profiles', JSON.stringify(updatedProfiles));
+            updateProfile(updatedProfile);
             toast.success('Wpis usunięty');
         }
     };
@@ -88,10 +67,7 @@ export default function HistoryPage() {
             updatedAt: new Date()
         };
 
-        const updatedProfiles = profiles.map(p => p.id === activeProfile.id ? updatedProfile : p);
-        setProfiles(updatedProfiles);
-        localStorage.setItem('fever-calc-profiles', JSON.stringify(updatedProfiles));
-
+        updateProfile(updatedProfile);
         toast.success('Wpis zaktualizowany');
         setEditingItem(null);
     };
@@ -175,10 +151,8 @@ export default function HistoryPage() {
                 );
 
                 const updatedProfile = { ...activeProfile, history: updatedHistory };
-                const updatedProfiles = profiles.map(p => p.id === activeProfile.id ? updatedProfile : p);
 
-                setProfiles(updatedProfiles);
-                localStorage.setItem('fever-calc-profiles', JSON.stringify(updatedProfiles));
+                updateProfile(updatedProfile);
                 toast.success(`Zaimportowano ${newItems.length} nowych wpisów`);
                 setShowScanner(false);
             }
@@ -212,10 +186,7 @@ export default function HistoryPage() {
             archivedEpisodes: [...(activeProfile.archivedEpisodes || []), episode]
         };
 
-        const updatedProfiles = profiles.map(p => p.id === activeProfile.id ? updatedProfile : p);
-        setProfiles(updatedProfiles);
-        localStorage.setItem('fever-calc-profiles', JSON.stringify(updatedProfiles));
-
+        updateProfile(updatedProfile);
         toast.success('Choroba zakończona i zarchiwizowana');
     };
 

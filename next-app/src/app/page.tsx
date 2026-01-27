@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Activity, Pill, Thermometer } from 'lucide-react';
+import { Activity, Pill, Thermometer, Bot, Sparkles, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Profile } from '@/types';
 import { generateId } from '@/lib/utils';
@@ -12,53 +12,25 @@ import { ProfileSchema } from '@/lib/validations';
 import { LiveTimer } from '@/components/timer';
 import { AIInsights } from '@/components/ai-insights';
 import { getLastDose, isPediatric } from '@/lib/calculations';
+import { useProfile } from '@/context/profile-context';
 import { DRUG_CONFIG } from '@/lib/constants';
 import { TemperatureChartInteractive } from '@/components/temperature-chart-interactive';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AiChatAssistant } from '@/components/ai-chat-assistant';
-import { Bot, Sparkles } from 'lucide-react';
 
-export default function HomePage() {
-    const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
-    const [profiles, setProfiles] = useState<Profile[]>([]);
+export default function Dashboard() {
+    const { profiles, activeProfile, activeProfileId, setActiveProfileId, addProfile } = useProfile();
+    const [isMenuOpen, setIsMenuOpen] = useState(false); // Used for dropdown toggle
+
+    // New Profile Form State
     const [newProfileName, setNewProfileName] = useState('');
     const [newProfileWeight, setNewProfileWeight] = useState('');
-    const [showNewProfile, setShowNewProfile] = useState(false);
-    const [showProfileSwitcher, setShowProfileSwitcher] = useState(false);
-    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [isAddingProfile, setIsAddingProfile] = useState(false);
 
-    // Load profiles
-    useEffect(() => {
-        const saved = localStorage.getItem('fever-calc-profiles');
-        if (saved) {
-            try {
-                const parsed: Profile[] = JSON.parse(saved);
-                setProfiles(parsed);
-                if (parsed.length > 0) {
-                    // Try to restore last active profile or default to first
-                    const lastActive = localStorage.getItem('fever-calc-active-id');
-                    if (lastActive && parsed.find(p => p.id === lastActive)) {
-                        setActiveProfileId(lastActive);
-                    } else if (parsed[0]) {
-                        setActiveProfileId(parsed[0].id);
-                    }
-                }
-            } catch (e) {
-                console.error('Json parse error', e);
-            }
-        }
-    }, []);
+    // AI Chat State
+    const [isAiChatOpen, setIsAiChatOpen] = useState(false);
 
-    // Update active profile persistence
-    useEffect(() => {
-        if (activeProfileId) {
-            localStorage.setItem('fever-calc-active-id', activeProfileId);
-        }
-    }, [activeProfileId]);
-
-    const activeProfile = profiles.find(p => p.id === activeProfileId) || null;
-
-    const createProfile = () => {
+    const handleCreateProfile = () => {
         try {
             const weight = parseFloat(newProfileWeight);
             const validated = ProfileSchema.parse({
@@ -77,20 +49,41 @@ export default function HomePage() {
                 history: [],
             };
 
-            const updated = [...profiles, newProfile];
-            setProfiles(updated);
-            setActiveProfileId(newProfile.id);
-            localStorage.setItem('fever-calc-profiles', JSON.stringify(updated));
-
+            addProfile(newProfile);
             toast.success(`Profil "${validated.name}" utworzony!`);
+
             setNewProfileName('');
             setNewProfileWeight('');
-            setShowNewProfile(false);
-            setShowProfileSwitcher(false);
+            setIsAddingProfile(false);
+            setIsMenuOpen(false);
         } catch (error) {
             if (error instanceof Error) toast.error(error.message);
         }
     };
+
+    if (profiles.length === 0 && !isAddingProfile) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4">
+                <Card className="w-full max-w-sm border-emerald-500/50 bg-slate-900/50 backdrop-blur-sm">
+                    <CardHeader>
+                        <CardTitle className="text-center text-emerald-400">Witaj!</CardTitle>
+                        <CardDescription className="text-center">
+                            Dodaj pierwszy profil, aby rozpocząć
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button
+                            className="w-full bg-emerald-600 hover:bg-emerald-700"
+                            onClick={() => setIsAddingProfile(true)}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Utwórz profil dziecka
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     const medicineCount = activeProfile?.history.filter(h => h.drug !== 'Pomiar').length || 0;
     const tempCount = activeProfile?.history.filter(h => h.drug === 'Pomiar' || h.temperature).length || 0;
@@ -135,7 +128,7 @@ export default function HomePage() {
                                     variant="outline"
                                     size="sm"
                                     className="h-8 text-xs border-emerald-500/30 hover:border-emerald-500/50 hover:bg-emerald-500/10"
-                                    onClick={() => setShowProfileSwitcher(!showProfileSwitcher)}
+                                    onClick={() => setIsMenuOpen(!isMenuOpen)}
                                 >
                                     Zmień
                                 </Button>
@@ -143,42 +136,45 @@ export default function HomePage() {
                         </div>
 
                         {/* Dropdown / Switcher Modal */}
-                        {showProfileSwitcher && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="absolute top-full left-0 right-0 mt-2 z-30 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden"
-                            >
-                                <div className="p-2 space-y-1">
-                                    {profiles.map(profile => (
+                        <AnimatePresence>
+                            {isMenuOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="absolute top-full left-0 right-0 mt-2 z-30 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden"
+                                >
+                                    <div className="p-2 space-y-1">
+                                        {profiles.map(profile => (
+                                            <button
+                                                key={profile.id}
+                                                onClick={() => {
+                                                    setActiveProfileId(profile.id);
+                                                    setIsMenuOpen(false);
+                                                }}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex justify-between items-center transition-colors ${activeProfileId === profile.id
+                                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
+                                                    : 'hover:bg-slate-800 text-slate-300'
+                                                    }`}
+                                            >
+                                                <span>{profile.name}</span>
+                                                <span className="text-xs text-slate-500">{profile.weight} kg</span>
+                                            </button>
+                                        ))}
+                                        <div className="h-px bg-slate-800 my-1" />
                                         <button
-                                            key={profile.id}
                                             onClick={() => {
-                                                setActiveProfileId(profile.id);
-                                                setShowProfileSwitcher(false);
+                                                setIsAddingProfile(true);
+                                                setIsMenuOpen(false);
                                             }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex justify-between items-center transition-colors ${activeProfileId === profile.id
-                                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
-                                                : 'hover:bg-slate-800 text-slate-300'
-                                                }`}
+                                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2"
                                         >
-                                            <span>{profile.name}</span>
-                                            <span className="text-xs text-slate-500">{profile.weight} kg</span>
+                                            <span>+ Dodaj nowy profil</span>
                                         </button>
-                                    ))}
-                                    <div className="h-px bg-slate-800 my-1" />
-                                    <button
-                                        onClick={() => {
-                                            setShowNewProfile(true);
-                                            setShowProfileSwitcher(false);
-                                        }}
-                                        className="w-full text-left px-3 py-2 rounded-lg text-sm text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2"
-                                    >
-                                        <span>+ Dodaj nowy profil</span>
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
 
                     {/* TIMERS Section */}
@@ -241,24 +237,19 @@ export default function HomePage() {
                     </motion.div>
                 </>
             ) : (
-                /* Empty State */
+                /* Empty State safe guard if something goes wrong ActiveProfile is missing */
                 <Card className="border-dashed border-2 border-slate-700 bg-slate-800/30">
                     <CardHeader>
-                        <CardTitle>Witaj w aplikacji!</CardTitle>
+                        <CardTitle>Wybierz profil</CardTitle>
                         <CardDescription>
-                            Zacznij od utworzenia profilu swojego dziecka.
+                            Nie wybrano aktywnego profilu.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <Button onClick={() => setShowNewProfile(true)} className="w-full">
-                            + Utwórz pierwszy profil
-                        </Button>
-                    </CardContent>
                 </Card>
             )}
 
             {/* New Profile Modal/Form */}
-            {showNewProfile && (
+            {isAddingProfile && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <Card className="border-emerald-500/50 w-full max-w-sm relative">
                         <CardHeader>
@@ -283,8 +274,8 @@ export default function HomePage() {
                                 />
                             </div>
                             <div className="flex gap-2 pt-2">
-                                <Button onClick={createProfile} className="flex-1">Utwórz</Button>
-                                <Button variant="ghost" onClick={() => setShowNewProfile(false)}>Anuluj</Button>
+                                <Button onClick={handleCreateProfile} className="flex-1">Utwórz</Button>
+                                <Button variant="ghost" onClick={() => setIsAddingProfile(false)}>Anuluj</Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -302,7 +293,7 @@ export default function HomePage() {
                 <Button
                     size="icon"
                     className="h-14 w-14 rounded-full bg-emerald-500 hover:bg-emerald-600 shadow-[0_0_20px_rgba(16,185,129,0.5)] border-2 border-emerald-400"
-                    onClick={() => setIsChatOpen(true)}
+                    onClick={() => setIsAiChatOpen(true)}
                 >
                     <Bot className="h-8 w-8 text-white" />
                 </Button>
@@ -310,8 +301,8 @@ export default function HomePage() {
 
             {/* AI Chat Modal */}
             <AiChatAssistant
-                isOpen={isChatOpen}
-                onClose={() => setIsChatOpen(false)}
+                isOpen={isAiChatOpen}
+                onClose={() => setIsAiChatOpen(false)}
                 activeProfile={activeProfile || undefined}
             />
         </div>
