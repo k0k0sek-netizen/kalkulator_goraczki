@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ModalPortal } from '@/components/ui/modal-portal';
 
 interface DoseModalProps {
     isOpen: boolean;
@@ -102,110 +103,112 @@ export function DoseModal({
     const isMeasurement = drugName === 'Pomiar';
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-slate-900 border border-slate-700 text-slate-100 rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+        <ModalPortal>
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+                <div className="bg-slate-900 border border-slate-700 text-slate-100 rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
 
-                {/* Header */}
-                <div className="p-4 border-b border-slate-800 bg-slate-900/50">
-                    <h2 className="text-lg font-bold flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-emerald-500" />
-                        {title || `Zapisz podanie: ${drugName}`}
-                    </h2>
-                    <p className="text-xs text-slate-400 mt-1">
-                        {isMeasurement ? 'Szczegóły pomiaru' : 'Dostosuj szczegóły podania leku'}
-                    </p>
-                </div>
-
-                {/* Body */}
-                <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
-
-                    {/* Time */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Data i godzina</label>
-                        <input
-                            type="datetime-local"
-                            value={dateStr}
-                            onChange={(e) => setDateStr(e.target.value)}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                        />
+                    {/* Header */}
+                    <div className="p-4 border-b border-slate-800 bg-slate-900/50">
+                        <h2 className="text-lg font-bold flex items-center gap-2">
+                            <Clock className="h-5 w-5 text-emerald-500" />
+                            {title || `Zapisz podanie: ${drugName}`}
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-1">
+                            {isMeasurement ? 'Szczegóły pomiaru' : 'Dostosuj szczegóły podania leku'}
+                        </p>
                     </div>
 
-                    {/* Dose & Temp Row */}
-                    <div className="grid grid-cols-2 gap-4">
-                        {!isMeasurement && (
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Dawka ({unit})</label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={doseMl}
-                                    onChange={(e) => setDoseMl(e.target.value)}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
-                                />
-                                <p className="text-[10px] text-slate-500">
-                                    ≈ {(parseFloat(doseMl || '0') * amountPerMl).toFixed(0)} mg
-                                </p>
-                            </div>
-                        )}
+                    {/* Body */}
+                    <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
 
-                        <div className={cn("space-y-2", isMeasurement ? "col-span-2" : "")}>
-                            <label className="text-sm font-medium text-slate-300">Temp. (°C)</label>
+                        {/* Time */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">Data i godzina</label>
                             <input
-                                type="number"
-                                step="0.1"
-                                placeholder="opcjonalnie"
-                                value={temperature}
-                                onChange={(e) => setTemperature(e.target.value)}
+                                type="datetime-local"
+                                value={dateStr}
+                                onChange={(e) => setDateStr(e.target.value)}
                                 className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                             />
                         </div>
-                    </div>
 
-                    {/* Symptoms */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Objawy (opcjonalnie)</label>
-                        <div className="flex flex-wrap gap-2">
-                            {COMMON_SYMPTOMS.map(s => (
-                                <button
-                                    key={s}
-                                    onClick={() => toggleSymptom(s)}
-                                    className={cn(
-                                        "text-xs px-2 py-1 rounded-full border transition-colors",
-                                        selectedSymptoms.includes(s)
-                                            ? "bg-emerald-600 border-emerald-500 text-white"
-                                            : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600"
-                                    )}
-                                >
-                                    {s}
-                                </button>
-                            ))}
+                        {/* Dose & Temp Row */}
+                        <div className="grid grid-cols-2 gap-4">
+                            {!isMeasurement && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-300">Dawka ({unit})</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={doseMl}
+                                        onChange={(e) => setDoseMl(e.target.value)}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
+                                    />
+                                    <p className="text-[10px] text-slate-500">
+                                        ≈ {(parseFloat(doseMl || '0') * amountPerMl).toFixed(0)} mg
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className={cn("space-y-2", isMeasurement ? "col-span-2" : "")}>
+                                <label className="text-sm font-medium text-slate-300">Temp. (°C)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="opcjonalnie"
+                                    value={temperature}
+                                    onChange={(e) => setTemperature(e.target.value)}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                                />
+                            </div>
                         </div>
+
+                        {/* Symptoms */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">Objawy (opcjonalnie)</label>
+                            <div className="flex flex-wrap gap-2">
+                                {COMMON_SYMPTOMS.map(s => (
+                                    <button
+                                        key={s}
+                                        onClick={() => toggleSymptom(s)}
+                                        className={cn(
+                                            "text-xs px-2 py-1 rounded-full border transition-colors",
+                                            selectedSymptoms.includes(s)
+                                                ? "bg-emerald-600 border-emerald-500 text-white"
+                                                : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600"
+                                        )}
+                                    >
+                                        {s}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Notes */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">Notatki</label>
+                            <textarea
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                placeholder="np. wypluł połowę, marudzi..."
+                                rows={2}
+                                className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                            />
+                        </div>
+
                     </div>
 
-                    {/* Notes */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-300">Notatki</label>
-                        <textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="np. wypluł połowę, marudzi..."
-                            rows={2}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
-                        />
+                    {/* Footer */}
+                    <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex gap-3 justify-end">
+                        <Button variant="ghost" onClick={onClose} className="hover:bg-slate-800">
+                            Anuluj
+                        </Button>
+                        <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                            Zapisz
+                        </Button>
                     </div>
-
-                </div>
-
-                {/* Footer */}
-                <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex gap-3 justify-end">
-                    <Button variant="ghost" onClick={onClose} className="hover:bg-slate-800">
-                        Anuluj
-                    </Button>
-                    <Button onClick={handleSave} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                        Zapisz
-                    </Button>
                 </div>
             </div>
-        </div>
+        </ModalPortal>
     );
 }

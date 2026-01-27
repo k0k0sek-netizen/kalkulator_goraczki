@@ -8,6 +8,7 @@ import { ArrowLeft, User, Trash2, Save, Download, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import type { Profile } from '@/types';
+import { InstallPrompt } from '@/components/install-prompt';
 
 export default function ProfilePage() {
     const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -38,6 +39,8 @@ export default function ProfilePage() {
             setActiveProfileId(id);
             setEditName(profile.name);
             setEditWeight(profile.weight.toString());
+            // Global sync
+            localStorage.setItem('fever-calc-active-id', id);
         }
     };
 
@@ -135,13 +138,17 @@ export default function ProfilePage() {
                         Powrót
                     </Button>
                 </Link>
-                <h1 className="text-2xl font-bold mb-2">Zarządzanie Profilami</h1>
+                <h1 className="text-2xl font-bold mb-2">Ustawienia i Profile</h1>
             </div>
+
+            {/* PWA Install Prompt */}
+            <InstallPrompt />
 
             {/* Profile Selector */}
             <Card className="mb-6">
                 <CardHeader>
-                    <CardTitle className="text-base">Wybierz profil</CardTitle>
+                    <CardTitle className="text-base">Zarządzanie profilami</CardTitle>
+                    <CardDescription>Wybierz profil do edycji (zmienia też aktywny profil).</CardDescription>
                 </CardHeader>
                 <CardContent className="flex gap-2 overflow-x-auto pb-4">
                     {profiles.map(profile => (
