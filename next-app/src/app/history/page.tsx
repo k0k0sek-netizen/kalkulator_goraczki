@@ -119,10 +119,10 @@ export default function HistoryPage() {
         toast.success('✅ Skopiowano tekst do schowka!');
     };
 
-    const downloadPdf = () => {
+    const downloadPdf = async () => {
         if (!activeProfile) return;
         try {
-            generatePdfReport(activeProfile);
+            await generatePdfReport(activeProfile);
             toast.success('✅ Raport PDF pobrany!');
         } catch (error) {
             console.error(error);

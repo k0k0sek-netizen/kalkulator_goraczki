@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 import type { Profile } from '@/types';
 import { formatDate } from './utils';
 
-export function generatePdfReport(profile: Profile) {
+export async function generatePdfReport(profile: Profile) {
     const doc = new jsPDF();
 
     const history = [...profile.history].sort((a, b) =>
@@ -85,5 +85,27 @@ export function generatePdfReport(profile: Profile) {
     }
 
     // Save
-    doc.save(`raport-${profile.name}-${new Date().toISOString().slice(0, 10)}.pdf`);
+    const fileName = `raport-${profile.name}-${new Date().toISOString().slice(0, 10)}.pdf`;
+
+    // Try to use File System Access API
+    if ('showSaveFilePicker' in window) {
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const handle = await (window as any).showSaveFilePicker({
+                suggestedName: fileName,
+                types: [{
+                    description: 'PDF Document',
+                    accept: { 'application/pdf': ['.pdf'] },
+                }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(doc.output('blob'));
+            await writable.close();
+            return;
+        } catch (err) {
+            console.log('Save cancelled or not supported, falling back to download', err);
+        }
+    }
+
+    doc.save(fileName);
 }

@@ -58,8 +58,15 @@ body {
   }
 
   /* Recharts Focus Fix */
-  .recharts-wrapper {
+  .recharts-wrapper,
+  .recharts-surface,
+  .recharts-sector {
     outline: none !important;
+  }
+
+  *:focus {
+    outline: none !important;
+    /* Remove default focus ring for all elements if focused by mouse, but preferably specific */
   }
 }
 
