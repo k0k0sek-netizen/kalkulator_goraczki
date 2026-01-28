@@ -21,27 +21,38 @@ interface TemperatureChartProps {
 }
 
 export function TemperatureChartInteractive({ history }: TemperatureChartProps) {
-    // Filter only items with temperature and sort chronologically for chart
-    const data = history
+    // 1. Prepare raw data (sorted)
+    const rawData = history
         .filter(h => h.temperature !== undefined)
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-        .map(h => ({
-            date: new Date(h.timestamp),
-            time: formatDate(new Date(h.timestamp), { timeStyle: 'short' }),
-            fullDate: formatDate(new Date(h.timestamp), { dateStyle: 'short', timeStyle: 'short' }),
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    if (rawData.length === 0) return null;
+
+    // 2. Check if span is > 24h
+    const hasMultiDay = rawData.length > 1 &&
+        (new Date(rawData[rawData.length - 1]!.timestamp).getTime() - new Date(rawData[0]!.timestamp).getTime() > 86400000);
+
+    // 3. Map to Chart Format
+    const chartData = rawData.map(h => {
+        const date = new Date(h.timestamp);
+        return {
+            timestamp: date.getTime(),
+            // Smart Label: Show Date + Time if > 24h span, else just Time
+            displayLabel: hasMultiDay
+                ? formatDate(date, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : formatDate(date, { timeStyle: 'short' }),
+            fullDate: formatDate(date, { dateStyle: 'short', timeStyle: 'short' }),
             temp: h.temperature,
             drug: h.drug !== 'Pomiar' ? h.drug : null,
             notes: h.notes
-        }))
-    // .slice(-10); // Removed slice to allow Brush navigation
+        };
+    });
 
-    if (data.length === 0) return null;
+    // Calculate domain padding with more space at bottom for touch targets
+    const minTemp = Math.min(...chartData.map(d => d.temp || 36));
+    const maxTemp = Math.max(...chartData.map(d => d.temp || 38));
 
-    // Calculate domain padding
-    const minTemp = Math.min(...data.map(d => d.temp || 36));
-    const maxTemp = Math.max(...data.map(d => d.temp || 38));
-
-    const domainMin = Math.floor(minTemp - 0.5);
+    const domainMin = Math.floor(minTemp - 0.8); // More padding at bottom
     const domainMax = Math.ceil(maxTemp + 0.5);
 
     return (
@@ -55,15 +66,15 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                     <span className="text-xs font-normal text-slate-400">Ostatnie pomiary</span>
                 </CardTitle>
             </CardHeader>
-            <CardContent className="h-[250px] p-0 pb-4">
+            <CardContent className="h-[280px] p-0 pb-4">
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
-                        data={data}
+                        data={chartData}
                         margin={{
                             top: 20,
                             right: 20,
                             left: -20,
-                            bottom: 0,
+                            bottom: 5, // Added bottom margin
                         }}
                     >
                         <defs>
@@ -83,18 +94,19 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.5} />
                         <XAxis
-                            dataKey="time"
+                            dataKey="displayLabel"
                             stroke="#94a3b8"
-                            fontSize={12}
+                            fontSize={11}
                             tickMargin={10}
+                            minTickGap={30}
                             tickLine={false}
                             axisLine={false}
                         />
                         <YAxis
-                            domain={['auto', 'auto']} // Let it auto-scale to emphasize the gradient
+                            domain={[domainMin, domainMax]}
                             stroke="#94a3b8"
                             fontSize={12}
-                            tickCount={5}
+                            tickCount={6}
                             tickLine={false}
                             axisLine={false}
                         />
@@ -118,7 +130,7 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                         />
                         <ReferenceLine y={38} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: '38°', fill: '#ef4444', fontSize: 10 }} />
                         <Brush
-                            dataKey="time"
+                            dataKey="displayLabel"
                             height={30}
                             stroke="#10b981"
                             fill="#0f172a"
