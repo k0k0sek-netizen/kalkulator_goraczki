@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kalkulator Gorączki - Asystent Rodzica (2026 Edition)
 
-## Getting Started
+Nowoczesna aplikacja webowa (PWA) wspierająca rodziców w bezpiecznym dawkowaniu leków przeciwgorączkowych (Paracetamol, Ibuprofen, Pyralgina) i monitorowaniu choroby dziecka.
 
-First, run the development server:
+## 🌟 Kluczowe Funkcje
+
+### 💊 Inteligentny Kalkulator
+- **Precyzyjne dawkowanie**: Wylicza bezpieczną ilość leku (ml/mg/tabletki) na podstawie wagi dziecka.
+- **Baza leków offline**: Zawiera popularne syropy i czopki (Pedicetamol, Nurofen, Ibum, Panadol, Pyralgin).
+- **Bezpieczeństwo**: Ostrzega przed przedawkowaniem dobowym i zbyt częstym podawaniem.
+
+### 🤖 Asystent Dr. AI (Gemini 3 Flash)
+- **Komunikacja głosowa/tekstowa**: Odpowiada na pytania o objawy, dawkowanie i postępowanie (np. "Co na wymioty?", "Kiedy do szpitala?").
+- **Tryb Hybrydowy**: Działa offline (baza reguł) oraz online (Google Gemini 3 Flash) dla bardziej złożonych zapytań.
+- **Kontekst Pacjenta**: AI zna imię i wagę dziecka, dostosowując odpowiedzi.
+
+### 📊 Interaktywna Karta Gorączki
+- **Wykres Termiczny**: Wizualizacja temperatury z gradientem (Zielony → Czerwony >38°C).
+- **Historia Choroby**: Zapisywanie pomiarów, podanych dawek i objawów.
+- **Nawigacja i Zoom**: Łatwe przeglądanie długiej historii choroby.
+
+### 📲 Ekosystem Mobile & PWA
+- **Skaner QR**: Przekazywanie historii choroby między telefonami (np. Tata → Mama) bez logowania.
+- **Lokalne Powiadomienia**: Przypomnienia o kolejnej dawce leku.
+- **Instalowalna Aplikacja**: Działa jak natywna aplikacja na iOS/Android.
+
+## 🛠️ Technologie
+
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript
+- **Styling**: Tailwind CSS v4, Framer Motion (płynne animacje "Liquid UI")
+- **AI**: Google Gemini API (model `gemini-3-flash-preview`)
+- **Dane**: Dexie.js (IndexedDB) - pełna prywatność, dane tylko w telefonie.
+- **PWA**: `@ducanh2912/next-pwa`
+
+## 🚀 Uruchomienie
 
 ```bash
+# Instalacja zależności
+npm install
+
+# Uruchomienie serwera deweloperskiego
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Aplikacja dostępna pod `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📦 Budowanie Produkcyjne
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## 🔒 Prywatność
+Aplikacja działa w modelu **Local-First**. Dane medyczne dzieci są zapisywane wyłącznie w pamięci przeglądarki (IndexedDB) i nie są wysyłane na żaden zewnętrzny serwer (poza zapytaniami do AI, które są anonimizowane).
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
