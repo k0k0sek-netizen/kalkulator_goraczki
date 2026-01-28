@@ -161,7 +161,7 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                                 </CardContent>
 
                                 {/* Suggestions */}
-                                <div className="px-4 pb-2 flex gap-2 overflow-x-auto custom-scrollbar pb-3">
+                                <div className="px-4 flex gap-2 overflow-x-auto custom-scrollbar pb-3">
                                     {suggestions.map(s => (
                                         <button
                                             key={s}
