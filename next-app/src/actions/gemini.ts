@@ -29,6 +29,6 @@ Używaj języka polskiego. Odpowiadaj krótko (max 3 zdania), chyba że pytanie 
         return { success: true, message: text };
     } catch (error) {
         console.error('Gemini Error:', error);
-        return { success: false, message: 'Błąd połączenia z AI. Spróbuj później.' };
+        return { success: false, message: `Błąd połączenia z AI: ${error instanceof Error ? error.message : String(error)}` };
     }
 }
