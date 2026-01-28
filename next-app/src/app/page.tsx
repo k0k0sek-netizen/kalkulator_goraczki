@@ -114,14 +114,30 @@ export default function Dashboard() {
                     </p>
                 </div>
                 {/* AI Assistant Button (Header) */}
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                    onClick={() => setIsAiChatOpen(true)}
+                <motion.div
+                    animate={{
+                        scale: [1, 1.05, 1],
+                        filter: [
+                            "drop-shadow(0 0 0px rgba(16, 185, 129, 0))",
+                            "drop-shadow(0 0 8px rgba(16, 185, 129, 0.3))",
+                            "drop-shadow(0 0 0px rgba(16, 185, 129, 0))"
+                        ]
+                    }}
+                    transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                    }}
                 >
-                    <Bot className="h-6 w-6" />
-                </Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="rounded-full border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                        onClick={() => setIsAiChatOpen(true)}
+                    >
+                        <Bot className="h-6 w-6" />
+                    </Button>
+                </motion.div>
             </div>
 
             {activeProfile ? (
