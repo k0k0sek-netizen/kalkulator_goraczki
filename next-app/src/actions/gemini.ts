@@ -14,8 +14,8 @@ export async function askGeminiAction(prompt: string, context?: string) {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Use specific version content-generation model
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
+        // Use newer experimental model as requested/available in 2026 context
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
         const systemPrompt = `Jesteś asystentem medycznym w aplikacji "Kalkulator Gorączki".
 Twoim celem jest pomaganie rodzicom w dawkowaniu leków, interpretacji objawów (gorączka, wysypka, wymioty) i uspokajaniu.
