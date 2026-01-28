@@ -15,6 +15,7 @@ import QRCode from "react-qr-code";
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { ModalPortal } from '@/components/ui/modal-portal';
 import { useProfile } from '@/context/profile-context';
+import LZString from 'lz-string';
 
 export default function HistoryPage() {
     const { activeProfile, updateProfile } = useProfile();
@@ -112,24 +113,38 @@ export default function HistoryPage() {
         return (item.doseMg || 0) / item.doseMl;
     };
 
+
+    // ... (inside component)
+
     // Generate QR Content (JSON for import)
     const getQrContent = () => {
         if (!activeProfile) return '';
-        // Export last 20 items to keep QR small enough but useful
+        // Export last 50 items (Compression allows more data)
         const exportData = {
             v: 1, // version
             n: activeProfile.name,
             w: activeProfile.weight,
-            h: activeProfile.history.slice(0, 20)
+            h: activeProfile.history.slice(0, 50)
         };
-        return JSON.stringify(exportData);
+        const jsonString = JSON.stringify(exportData);
+        return LZString.compressToEncodedURIComponent(jsonString);
     };
 
     const handleScan = (text: string) => {
         if (!text || !activeProfile) return;
 
         try {
-            const data = JSON.parse(text);
+            let jsonString = '';
+            // Try decompressing first
+            try {
+                const decompressed = LZString.decompressFromEncodedURIComponent(text);
+                if (decompressed) jsonString = decompressed;
+                else jsonString = text; // Fallback to raw text
+            } catch (e) {
+                jsonString = text;
+            }
+
+            const data = JSON.parse(jsonString);
             if (!data.v || !data.h) {
                 toast.error('Nieprawidłowy kod QR aplikacji');
                 return;
@@ -304,26 +319,28 @@ export default function HistoryPage() {
                 <>
                     {/* Export buttons */}
                     {activeProfile.history.length > 0 && (
-                        <div className="flex gap-2 mb-4">
-                            <Button onClick={downloadPdf} variant="default" className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+                        <div className="grid grid-cols-2 gap-2 mb-4">
+                            <Button onClick={downloadPdf} variant="default" className="w-full bg-emerald-600 hover:bg-emerald-700">
                                 <Copy className="h-4 w-4 mr-2" />
                                 PDF
                             </Button>
-                            <Button onClick={() => setShowQr(true)} variant="outline" className="flex-1">
-                                <div className="flex items-center gap-2">
+                            <Button onClick={() => setShowQr(true)} variant="outline" className="w-full">
+                                <div className="flex items-center justify-center gap-2">
                                     <span className="text-xl">📤</span>
                                     QR
                                 </div>
                             </Button>
-                            <Button onClick={() => setShowScanner(true)} variant="outline" className="flex-1">
-                                <div className="flex items-center gap-2">
+                            <Button onClick={() => setShowScanner(true)} variant="outline" className="w-full">
+                                <div className="flex items-center justify-center gap-2">
                                     <span className="text-xl">📷</span>
                                     Skanuj
                                 </div>
                             </Button>
-                            <Button onClick={exportReport} variant="outline" className="flex-1">
-                                <Copy className="h-4 w-4 mr-2" />
-                                Kopiuj
+                            <Button onClick={exportReport} variant="outline" className="w-full">
+                                <div className="flex items-center justify-center gap-2">
+                                    <Copy className="h-4 w-4" />
+                                    Kopiuj
+                                </div>
                             </Button>
                         </div>
                     )}

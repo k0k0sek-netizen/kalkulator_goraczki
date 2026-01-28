@@ -8,7 +8,8 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    ReferenceLine
+    ReferenceLine,
+    Brush
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Thermometer } from 'lucide-react';
@@ -32,7 +33,7 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
             drug: h.drug !== 'Pomiar' ? h.drug : null,
             notes: h.notes
         }))
-        .slice(-10); // Show last 10 points
+    // .slice(-10); // Removed slice to allow Brush navigation
 
     if (data.length === 0) return null;
 
@@ -116,6 +117,13 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                             wrapperStyle={{ outline: 'none' }}
                         />
                         <ReferenceLine y={38} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: '38°', fill: '#ef4444', fontSize: 10 }} />
+                        <Brush
+                            dataKey="time"
+                            height={30}
+                            stroke="#10b981"
+                            fill="#0f172a"
+                            tickFormatter={() => ''}
+                        />
                         <Area
                             type="monotone"
                             dataKey="temp"

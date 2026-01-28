@@ -62,7 +62,7 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const suggestions = [
         "Dziecko zwymiotowało lek",
@@ -73,10 +73,8 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
     ];
 
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    }, [messages, isOpen]);
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, isLoading]); // Trigger on messages change or loading state
 
     const handleSend = async (text: string) => {
         if (!text.trim() || isLoading) return;
@@ -138,7 +136,7 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                                         <X className="h-5 w-5" />
                                     </Button>
                                 </CardHeader>
-                                <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar" ref={scrollRef}>
+                                <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                                     {messages.map(m => (
                                         <div key={m.id} className={cn("flex", m.role === 'user' ? "justify-end" : "justify-start")}>
                                             <div className={cn(
@@ -159,6 +157,7 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                                             </div>
                                         </div>
                                     )}
+                                    <div ref={messagesEndRef} />
                                 </CardContent>
 
                                 {/* Suggestions */}
