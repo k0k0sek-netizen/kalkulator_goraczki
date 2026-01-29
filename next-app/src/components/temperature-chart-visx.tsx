@@ -5,7 +5,7 @@ import { Group } from '@visx/group';
 import { AreaClosed, LinePath, Bar } from '@visx/shape';
 import { curveMonotoneX } from '@visx/curve';
 import { scaleTime, scaleLinear } from '@visx/scale';
-import { withTooltip, Tooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
+import { withTooltip, TooltipWithBounds, defaultStyles } from '@visx/tooltip';
 import { LinearGradient } from '@visx/gradient';
 import { localPoint } from '@visx/event';
 import { AxisBottom, AxisLeft } from '@visx/axis';
@@ -14,7 +14,6 @@ import { ParentSize } from '@visx/responsive';
 import { Thermometer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { HistoryItem } from '@/types';
-import { formatDate } from '@/lib/utils'; // Keep our utils for other things
 
 // --- Types ---
 
@@ -31,9 +30,6 @@ interface DataPoint {
 
 // --- Component ---
 
-const background = 'transparent';
-const accentColor = '#10b981'; // Emerald 500
-const accentColorDark = '#334155'; // Slate 700
 const tooltipStyles = {
     ...defaultStyles,
     background: 'rgba(15, 23, 42, 0.95)',
@@ -45,7 +41,6 @@ const tooltipStyles = {
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)',
 };
 
-const formatDateAxis = timeFormat('%H:%M');
 const formatDateFull = timeFormat('%d %b, %H:%M');
 
 function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, tooltipTop = 0, tooltipLeft = 0 }: any) {
@@ -62,14 +57,11 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
     }, [history]);
 
     // Bounds
-    const margin = { top: 20, right: 20, bottom: 40, left: 0 }; // Left 0 to hide Y axis line mostly
+    const margin = { top: 20, right: 20, bottom: 40, left: 45 };
     const xMax = width - margin.left - margin.right;
     const yMax = height - margin.top - margin.bottom;
 
-
-
-    // Scales
-    // Filter only valid temps for domain calculation
+    // Scales & Domain
     const tempValues = data.filter((d: any) => d.temp !== null).map((d: any) => d.temp as number);
     const minTemp = tempValues.length ? Math.min(...tempValues) : 36;
     const maxTemp = tempValues.length ? Math.max(...tempValues) : 38;
@@ -96,16 +88,20 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
         [yMax, minTemp, maxTemp],
     );
 
+    // Dynamic Time Format
+    const timeSpan = Math.max(...data.map((d: any) => d.date.getTime())) - Math.min(...data.map((d: any) => d.date.getTime()));
+    const isMultiDay = timeSpan > 86400000; // 24h
+    const axisDateFormat = isMultiDay ? timeFormat('%d.%m %H:%M') : timeFormat('%H:%M');
+
     // Accessors
     const getDate = (d: DataPoint) => d.date;
-    const getTemp = (d: DataPoint) => d.temp ?? (minTemp - 0.5); // Fallback for area base
+    const getTemp = (d: DataPoint) => d.temp ?? (minTemp - 0.5);
 
     // Tooltip Handler
     const handleTooltip = useCallback(
         (event: React.TouchEvent<SVGRectElement> | React.MouseEvent<SVGRectElement>) => {
             const { x } = localPoint(event) || { x: 0 };
             const x0 = xScale.invert(x);
-            // Find closest data point
             let closest = data[0];
             let minDiff = Infinity;
             for (const d of data) {
@@ -120,18 +116,17 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
                 showTooltip({
                     tooltipData: closest,
                     tooltipLeft: xScale(closest.date),
-                    tooltipTop: closest.temp ? yScale(closest.temp) : yMax, // Position at line or bottom
+                    tooltipTop: closest.temp ? yScale(closest.temp) : yMax,
                 });
             }
         },
         [showTooltip, yScale, xScale, data, yMax],
     );
 
-    // Filter data for Line path (remove nulls to break line if needed, or connect)
-    // For Visx Area/LinePath, we feed it valid data.
-    // If we want gaps, we must use defined prop.
     const validTemps = data.filter((d: any) => d.temp !== null);
 
+    // Hook Rule Requirement: Hooks must be called before early return.
+    // ParentSize ensures width is > 0 typically, but we keep this check for safety AFTER hooks.
     if (width < 10) return null;
 
     return (
@@ -175,12 +170,11 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
                         x={(d) => xScale(getDate(d)) ?? 0}
                         y={(d) => yScale(getTemp(d)) ?? 0}
                         stroke="url(#line-gradient)"
-                        strokeWidth={3}
+                        strokeWidth={4}
                         curve={curveMonotoneX}
-
                     />
 
-                    {/* Dots for Temperature */}
+                    {/* Dots */}
                     {validTemps.map((d: DataPoint, i: number) => (
                         <circle
                             key={`temp-dot-${i}`}
@@ -193,14 +187,14 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
                         />
                     ))}
 
-                    {/* Dose Markers (At the bottom) */}
+                    {/* Dose Markers */}
                     {data.filter((d: any) => d.dose).map((d: DataPoint, i: number) => {
                         const x = xScale(getDate(d));
                         const y = yMax - 10;
-                        const drugColor = d.dose?.drug === 'Ibuprofen' ? '#3b82f6' : '#10b981';
+                        const drugColor = d.dose?.drug === 'Paracetamol' ? '#10b981' : '#3b82f6';
                         return (
                             <g key={`dose-${i}`}>
-                                <line x1={x} x2={x} y1={0} y2={yMax} stroke={drugColor} strokeOpacity={0.2} strokeDasharray="2 2" />
+                                <line x1={x} x2={x} y1={0} y2={yMax} stroke={drugColor} strokeOpacity={0.3} strokeDasharray="2 2" />
                                 <circle cx={x} cy={y} r={10} fill={drugColor} fillOpacity={0.2} />
                                 <circle cx={x} cy={y} r={6} fill={drugColor} stroke="#fff" strokeWidth={1.5} />
                                 <text x={x} y={y} dy={3} textAnchor="middle" fontSize={8} fill="#fff" fontWeight="bold">
@@ -209,7 +203,6 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
                             </g>
                         );
                     })}
-
 
                     {/* Touch Area */}
                     <Bar
@@ -225,18 +218,19 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
                         onMouseLeave={() => hideTooltip()}
                     />
 
-                    {/* Axis */}
+                    {/* Axes */}
                     <AxisBottom
                         top={yMax}
                         scale={xScale}
-                        numTicks={width > 500 ? 5 : 3}
-                        tickFormat={(val) => formatDateAxis(val as Date)}
-                        stroke="#94a3b8"
-                        tickStroke="#94a3b8"
+                        numTicks={width > 500 ? 5 : 4}
+                        tickFormat={(val) => axisDateFormat(val as Date)}
+                        stroke="#334155"
+                        tickStroke="#334155"
                         tickLabelProps={() => ({
                             fill: '#94a3b8',
-                            fontSize: 11,
+                            fontSize: 10,
                             textAnchor: 'middle',
+                            dy: 2
                         })}
                     />
                     <AxisLeft
@@ -245,10 +239,10 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
                         stroke="transparent"
                         tickStroke="transparent"
                         tickLabelProps={() => ({
-                            fill: '#64748b',
+                            fill: '#94a3b8',
                             fontSize: 10,
                             textAnchor: 'end',
-                            dx: 15,
+                            dx: -8,
                             dy: 3
                         })}
                     />
@@ -283,7 +277,7 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
             {tooltipData && (
                 <TooltipWithBounds
                     key={Math.random()}
-                    top={tooltipTop + margin.top} // Adjust for margin
+                    top={tooltipTop + margin.top}
                     left={tooltipLeft + margin.left}
                     style={tooltipStyles}
                 >
