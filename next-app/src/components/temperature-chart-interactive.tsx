@@ -51,6 +51,9 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
         };
     });
 
+    const gradientId = "colorTemp-" + Math.random().toString(36).substr(2, 9);
+    const strokeId = "strokeTemp-" + Math.random().toString(36).substr(2, 9);
+
     return (
         <Card className="border-emerald-500/20 bg-slate-900/40 backdrop-blur-md">
             <CardHeader className="pb-2">
@@ -73,12 +76,12 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                         }}
                     >
                         <defs>
-                            <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
+                            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor="#ef4444" stopOpacity={0.8} />
                                 <stop offset="50%" stopColor="#f97316" stopOpacity={0.5} />
                                 <stop offset="100%" stopColor="#10b981" stopOpacity={0.2} />
                             </linearGradient>
-                            <linearGradient id="strokeTemp" x1="0" y1="0" x2="0" y2="1">
+                            <linearGradient id={strokeId} x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
                                 <stop offset="50%" stopColor="#f97316" stopOpacity={1} />
                                 <stop offset="100%" stopColor="#10b981" stopOpacity={1} />
@@ -132,13 +135,13 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
 
                         {/* Temperature Layer */}
                         <Area
-                            type="monotone"
+                            type="linear"
                             dataKey="temp"
                             connectNulls={true}
-                            stroke="url(#strokeTemp)"
+                            stroke={`url(#${strokeId})`}
                             strokeWidth={4}
                             fillOpacity={1}
-                            fill="url(#colorTemp)"
+                            fill={`url(#${gradientId})`}
                             animationDuration={1500}
                             dot={(props: any) => {
                                 const { cx, cy, payload } = props;
