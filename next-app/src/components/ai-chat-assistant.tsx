@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Bot, X, Send, User, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import type { Profile } from '@/types';
 import { askGeminiAction } from '@/actions/gemini';
 import { ModalPortal } from '@/components/ui/modal-portal';
@@ -94,9 +94,31 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
             return;
         }
 
+
+
         // 2. Try Gemini (Online)
         setIsLoading(true);
-        const context = activeProfile ? `Dziecko: ${activeProfile.name}, waga: ${activeProfile.weight}kg` : '';
+
+        // Prepare History Context
+        let historyContext = '';
+        if (activeProfile && activeProfile.history.length > 0) {
+            // Get last 15 items to give context but save tokens
+            const recentHistory = [...activeProfile.history]
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                .slice(0, 15);
+
+            historyContext = recentHistory.map(h => {
+                const date = formatDate(h.timestamp, { dateStyle: 'short', timeStyle: 'short' });
+                const type = h.type === 'dose' ? `Lek: ${h.drug} (${h.doseMl}ml / ${h.doseMg}mg)` : `Pomiar: ${h.temperature}°C`;
+                const symptoms = h.symptoms?.length ? `, Objawy: ${h.symptoms.join(', ')}` : '';
+                const notes = h.notes ? `, Notatka: ${h.notes}` : '';
+                return `- [${date}] ${type}${symptoms}${notes}`;
+            }).join('\n');
+        }
+
+        const context = activeProfile
+            ? `Pacjent: ${activeProfile.name}, Waga: ${activeProfile.weight}kg.\n\nOstatnia historia choroby (od najnowszych):\n${historyContext || 'Brak wpisów.'}`
+            : '';
 
         try {
             const result = await askGeminiAction(text, context);
