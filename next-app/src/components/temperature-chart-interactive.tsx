@@ -21,9 +21,9 @@ interface TemperatureChartProps {
 }
 
 export function TemperatureChartInteractive({ history }: TemperatureChartProps) {
-    // 1. Filter ONLY temperatures (Revert to strict temp chart)
+    // 1. Filter ALL items with valid temperature (Relaxed filter)
     const rawData = history
-        .filter(h => h.type === 'temp' && h.temperature)
+        .filter(h => h.temperature && h.temperature > 0)
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     if (rawData.length === 0) return null;
