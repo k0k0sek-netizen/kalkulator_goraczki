@@ -102,10 +102,9 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
         // Prepare History Context
         let historyContext = '';
         if (activeProfile && activeProfile.history.length > 0) {
-            // Get last 15 items to give context but save tokens
+            // Get full history for accurate analysis
             const recentHistory = [...activeProfile.history]
-                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-                .slice(0, 15);
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
             historyContext = recentHistory.map(h => {
                 const date = formatDate(h.timestamp, { dateStyle: 'short', timeStyle: 'short' });
