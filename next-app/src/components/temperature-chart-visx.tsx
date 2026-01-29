@@ -55,7 +55,7 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
             .sort((a: HistoryItem, b: HistoryItem) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
             .map((h: HistoryItem) => ({
                 date: new Date(h.timestamp),
-                temp: h.type === 'temp' && h.temperature ? h.temperature : null,
+                temp: h.temperature ? h.temperature : null,
                 dose: h.type === 'dose' ? h : null,
                 original: h
             }));
