@@ -27,6 +27,11 @@ interface AiChatAssistantProps {
 const getBotResponse = (input: string, profile?: Profile): string | null => {
     const lower = input.toLowerCase();
 
+    // 0. Bypass for "Report" feature (Gemini)
+    if (lower.includes('raport') || lower.includes('podsumowanie')) {
+        return null;
+    }
+
     if (lower.includes('zwymiotował') || lower.includes('wymiot')) {
         return `Jeśli dziecko zwymiotowało lek do 15 minut od podania, zazwyczaj podaje się dawkę ponownie. Jeśli minęło więcej czasu (np. 30-40 min), lek mógł się już wchłonąć. Obserwuj temperaturę i nie podawaj od razu pełnej dawki bez pewności.`;
     }
