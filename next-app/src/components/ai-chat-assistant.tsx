@@ -23,47 +23,46 @@ interface AiChatAssistantProps {
     activeProfile?: Profile;
 }
 
-// Simple Rule-Based Logic (Offline AI)
-const getBotResponse = (input: string, profile?: Profile): string | null => {
+// 1. Critical Logic (Always check first, regardless of connection)
+const getCriticalResponse = (input: string): string | null => {
+    const lower = input.toLowerCase();
+    if (lower.includes('drgawk')) {
+        return '🔴 PILNE: Przy drgawkach gorączkowych: Połóż dziecko w bezpiecznej pozycji na boku. Nie wkładaj nic do buzi. Poluzuj ubranie. Jeśli trwają >5 min, wezwij pogotowie (112).';
+    }
+    return null;
+};
+
+// 2. Offline Fallback Logic (Only if AI fails)
+const getOfflineFallback = (input: string, profile?: Profile): string | null => {
     const lower = input.toLowerCase();
 
-    // 0. Bypass for "Report" feature (Gemini)
-    if (lower.includes('raport') || lower.includes('podsumowanie')) {
-        return null;
-    }
-
     if (lower.includes('zwymiotował') || lower.includes('wymiot')) {
-        return `Jeśli dziecko zwymiotowało lek do 15 minut od podania, zazwyczaj podaje się dawkę ponownie. Jeśli minęło więcej czasu (np. 30-40 min), lek mógł się już wchłonąć. Obserwuj temperaturę i nie podawaj od razu pełnej dawki bez pewności.`;
+        return `(Tryb Offline) 🤮 Jeśli dziecko zwymiotowało lek do 15 minut od podania, zazwyczaj podaje się dawkę ponownie. Jeśli minęło więcej czasu (np. 30-40 min), lek mógł się już wchłonąć.`;
     }
 
     if (lower.includes('nie spada') || lower.includes('nadal gorączka') || lower.includes('wysoka')) {
-        return `Jeśli podałeś lek i gorączka nie spada po 1 godzinie, możesz rozważyć podanie leku z innej grupy (np. jeśli był Paracetamol, to teraz Ibuprofen). Pamiętaj o zachowaniu odstępów między tymi samymi lekami (4h Paracetamol, 6h Ibuprofen).`;
+        return `(Tryb Offline) 🌡️ Jeśli podałeś lek i gorączka nie spada po 1 godzinie, możesz rozważyć podanie leku z innej grupy (np. Paracetamol ↔ Ibuprofen). Pamiętaj o odstępach!`;
     }
 
     if (lower.includes('ile') && lower.includes('dawka')) {
-        if (profile) return `Dla wagi ${profile.weight}kg, kalkulator automatycznie wylicza bezpieczną dawkę na karcie leku. Sprawdź zakładkę Kalkulator.`;
-        return 'Dawkę wyliczamy na podstawie wagi dziecka. Wpisz wagę w profilu, a kalkulator poda dokładną ilość.';
+        if (profile) return `(Tryb Offline) ⚖️ Dla wagi ${profile.weight}kg sprawdź zakładkę "Kalkulator". Tam masz dokładne wyliczenie.`;
+        return '(Tryb Offline) ⚖️ Dawkę wyliczamy na podstawie wagi dziecka. Użyj zakładki "Kalkulator".';
     }
 
-    if (lower.includes('lekarz') || lower.includes('szpital') || lower.includes('pogotowie')) {
-        return 'Skontaktuj się z lekarzem, jeśli: gorączka trwa >3 dni, dziecko ma drgawki, wybroczyny, sztywność karku, problemy z oddychaniem lub jest odwodnione. Aplikacja nie zastępuje porady lekarskiej!';
-    }
-
-    if (lower.includes('drgawk')) {
-        return 'Przy drgawkach gorączkowych: Połóż dziecko w bezpiecznej pozycji na boku. Nie wkładaj nic do buzi. Poluzuj ubranie. Jeśli trwają >5 min, wezwij pogotowie (112).';
+    if (lower.includes('lekarz') || lower.includes('szpital') || lower.includes('pogotowie') || lower.includes('karetk')) {
+        return '(Tryb Offline) 🚑 Skontaktuj się z lekarzem, jeśli: gorączka trwa >3 dni, dziecko ma drgawki, wybroczyny, sztywność karku lub problemy z oddychaniem.';
     }
 
     if (lower.includes('łączyć') || lower.includes('razem')) {
-        return 'Możesz stosować tzw. naprzemienne podawanie leków (Paracetamol i Ibuprofen), ale zachowaj odstępy! Między tym samym lekiem (np. Ibuprofen-Ibuprofen) musi być 6h przerwy. Między różnymi (Paracetamol-Ibuprofen) zazwyczaj 3-4h. Nigdy nie podawaj ich naraz, chyba że lekarz zalecił inaczej.';
+        return '(Tryb Offline) 💊 Możesz stosować metodę naprzemienną (Paracetamol co 4h, Ibuprofen co 6h). Nigdy nie podawaj ich naraz w jednej dawce bez konsultacji.';
     }
 
-    // Return null to trigger Gemini
     return null;
 };
 
 export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssistantProps) {
     const [messages, setMessages] = useState<Message[]>([
-        { id: '1', role: 'assistant', text: 'Cześć! Jestem Twoim wirtualnym asystentem. Działam w trybie hybrydowym: najpierw sprawdzam bazę offline, a jeśli trzeba - pytam chmurę AI (wymaga internetu).' }
+        { id: '1', role: 'assistant', text: 'Cześć! Jestem Twoim wirtualnym asystentem. Działam online (Gemini AI), ale w razie braku zasięgu mam też wiedzę offline. Jak mogę pomóc?' }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -80,7 +79,7 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isLoading]); // Trigger on messages change or loading state
+    }, [messages, isLoading]);
 
     const handleSend = async (text: string) => {
         if (!text.trim() || isLoading) return;
@@ -89,18 +88,14 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
         setMessages(prev => [...prev, userMsg]);
         setInput('');
 
-        // 1. Try Offline Logic
-        const offlineResponse = getBotResponse(text, activeProfile);
-
-        if (offlineResponse) {
+        // 1. Critical Check (Immediate)
+        const criticalResponse = getCriticalResponse(text);
+        if (criticalResponse) {
             setTimeout(() => {
-                const botMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', text: offlineResponse };
-                setMessages(prev => [...prev, botMsg]);
+                setMessages(prev => [...prev, { id: 'crit', role: 'assistant', text: criticalResponse }]);
             }, 500);
             return;
         }
-
-
 
         // 2. Try Gemini (Online)
         setIsLoading(true);
@@ -119,22 +114,37 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                 const notes = h.notes ? `, Notatka: ${h.notes}` : '';
                 return `- [${date}] ${type}${symptoms}${notes}`;
             }).join('\n');
-        }
-
-        const context = activeProfile
+        } const context = activeProfile
             ? `Pacjent: ${activeProfile.name}, Waga: ${activeProfile.weight}kg.\n\nOstatnia historia choroby (od najnowszych):\n${historyContext || 'Brak wpisów.'}`
             : '';
 
         try {
             const result = await askGeminiAction(text, context);
-            const botMsg: Message = {
+            if (!result.success) throw new Error(result.message);
+
+            setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                text: result.success ? result.message : `(Offline) ${result.message}`
-            };
-            setMessages(prev => [...prev, botMsg]);
+                text: result.message
+            }]);
         } catch (e) {
-            setMessages(prev => [...prev, { id: 'err', role: 'assistant', text: 'Błąd połączenia z serwerem AI.' }]);
+            // 3. Smart Offline Fallback
+            console.warn('AI Unavailable, trying offline fallback:', e);
+            const fallbackMsg = getOfflineFallback(text, activeProfile);
+
+            if (fallbackMsg) {
+                setMessages(prev => [...prev, {
+                    id: 'doc',
+                    role: 'assistant',
+                    text: fallbackMsg
+                }]);
+            } else {
+                setMessages(prev => [...prev, {
+                    id: 'err',
+                    role: 'assistant',
+                    text: '📶 Brak połączenia z AI. Nie znalazłem też odpowiedzi w bazie offline. Spróbuj zapytać inaczej lub sprawdź połączenie.'
+                }]);
+            }
         } finally {
             setIsLoading(false);
         }

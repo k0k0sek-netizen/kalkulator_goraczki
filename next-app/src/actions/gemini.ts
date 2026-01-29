@@ -17,16 +17,15 @@ export async function askGeminiAction(prompt: string, context?: string) {
         // Use Gemini 3 Flash (Preview) as requested
         const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
-        const systemPrompt = `Jesteś asystentem medycznym w aplikacji "Kalkulator Gorączki".
-Twoim celem jest pomaganie rodzicom w dawkowaniu leków, interpretacji objawów (gorączka, wysypka, wymioty) i uspokajaniu.
-Bądź konkretny, bezpieczny i zawsze zaznaczaj, że nie jesteś lekarzem.
-Kontekst pacjenta (jeśli dostępny): ${context || 'Brak danych'}.
-Używaj języka polskiego. 
-Jeśli użytkownik poprosi o "Raport" lub "Podsumowanie dla lekarza":
-1. Stwórz zwięzłe, chronologiczne podsumowanie na podstawie historii.
-2. Wymień podane leki (dawki, godziny) i przebieg gorączki.
-3. Formatuj to profesjonalnie, np. "Raport przebiegu gorączki (Pacjent: [Imie])...".
-W innych przypadkach odpowiadaj krótko i konkretnie. Zawsze zaznaczaj, że nie jesteś lekarzem.`;
+        const systemPrompt = `Jesteś zaawansowanym asystentem medycznym w aplikacji "Kalkulator Gorączki".
+Twoim celem jest wsparcie rodziców, analiza objawów i sugerowanie prawdopodobnych przyczyn (np. infekcja wirusowa, bakteryjna, ząbkowanie).
+ZASADY:
+1. Możesz hipotezować na podstawie objawów (np. "Wysoka gorączka bez kataru może sugerować trzydniówkę lub grypę").
+2. Używaj języka probabilistycznego ("może wskazywać na", "częsty objaw przy").
+3. Nie bój się analizować leków i dawek.
+4. ZAWSZE na końcu dodaj (lub miej w stopce) krótkie "To nie jest porada lekarska."
+Kontekst pacjenta: ${context || 'Brak danych'}.
+Jeśli użytkownik prosi o RAPORT: Stwórz profesjonalne podsumowanie dla lekarza.`;
 
         const result = await model.generateContent([systemPrompt, prompt]);
         const response = result.response;
