@@ -126,7 +126,7 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                             exit={{ opacity: 0, scale: 0.9, y: 20 }}
                             className="w-full max-w-md bg-transparent flex flex-col h-[80dvh] max-h-[600px]"
                         >
-                            <Card className="flex-1 flex flex-col border-emerald-500/30 bg-slate-900 shadow-2xl">
+                            <Card className="flex-1 flex flex-col border-emerald-500/30 bg-slate-900 shadow-2xl overflow-hidden">
                                 <CardHeader className="flex flex-row items-center justify-between py-3 px-4 border-b border-slate-800">
                                     <CardTitle className="text-base flex items-center gap-2">
                                         <Bot className="h-5 w-5 text-emerald-400" />
@@ -136,7 +136,7 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                                         <X className="h-5 w-5" />
                                     </Button>
                                 </CardHeader>
-                                <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                                <CardContent className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar min-h-0">
                                     {messages.map(m => (
                                         <div key={m.id} className={cn("flex", m.role === 'user' ? "justify-end" : "justify-start")}>
                                             <div className={cn(
