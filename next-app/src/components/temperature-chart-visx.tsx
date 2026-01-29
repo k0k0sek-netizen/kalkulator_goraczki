@@ -66,7 +66,7 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
     const xMax = width - margin.left - margin.right;
     const yMax = height - margin.top - margin.bottom;
 
-    if (width < 10) return null;
+
 
     // Scales
     // Filter only valid temps for domain calculation
@@ -131,6 +131,8 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
     // For Visx Area/LinePath, we feed it valid data.
     // If we want gaps, we must use defined prop.
     const validTemps = data.filter((d: any) => d.temp !== null);
+
+    if (width < 10) return null;
 
     return (
         <div>
