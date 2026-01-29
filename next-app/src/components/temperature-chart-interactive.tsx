@@ -21,9 +21,8 @@ interface TemperatureChartProps {
 }
 
 export function TemperatureChartInteractive({ history }: TemperatureChartProps) {
-    // 1. Prepare raw data (sorted)
+    // 1. Prepare raw data (sorted) - Include both temps and doses for timeline
     const rawData = history
-        .filter(h => h.temperature !== undefined)
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     if (rawData.length === 0) return null;
@@ -37,13 +36,14 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
         const date = new Date(h.timestamp);
         return {
             timestamp: date.getTime(),
-            // Smart Label: Show Date + Time if > 24h span, else just Time
             displayLabel: hasMultiDay
                 ? formatDate(date, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                 : formatDate(date, { timeStyle: 'short' }),
             fullDate: formatDate(date, { dateStyle: 'short', timeStyle: 'short' }),
-            temp: h.temperature,
+            temp: h.type === 'temp' ? h.temperature : null, // Null for doses so line breaks or interpolates? Recharts connectsNulls
+            type: h.type,
             drug: h.drug !== 'Pomiar' ? h.drug : null,
+            dose: h.doseMl ? `${h.doseMl}ml` : (h.doseMg ? `${h.doseMg}mg` : ''),
             notes: h.notes
         };
     });
@@ -74,16 +74,13 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                             top: 20,
                             right: 20,
                             left: -20,
-                            bottom: 5, // Added bottom margin
+                            bottom: 5,
                         }}
                     >
                         <defs>
                             <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
-                                {/* Top of chart (High temp) -> Red */}
                                 <stop offset="0%" stopColor="#ef4444" stopOpacity={0.8} />
-                                {/* Middle (Warning) -> Orange */}
                                 <stop offset="50%" stopColor="#f97316" stopOpacity={0.5} />
-                                {/* Bottom (Safe) -> Green */}
                                 <stop offset="100%" stopColor="#10b981" stopOpacity={0.2} />
                             </linearGradient>
                             <linearGradient id="strokeTemp" x1="0" y1="0" x2="0" y2="1">
@@ -121,14 +118,27 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                             labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
                             cursor={{ stroke: '#f97316', strokeWidth: 1, strokeDasharray: '4 4' }}
                             itemStyle={{ color: '#f97316' }}
-                            formatter={(value: any) => [`${value}°C`, 'Temperatura']}
+                            formatter={(value: any, name: string | number | undefined, props: any) => {
+                                if (props.payload.type === 'dose') return [`${props.payload.dose}`, props.payload.drug];
+                                return [`${value}°C`, 'Temperatura'];
+                            }}
                             labelFormatter={(label, active) => {
                                 if (active && active[0]) return active[0].payload.fullDate;
                                 return label;
                             }}
-                            wrapperStyle={{ outline: 'none' }}
                         />
                         <ReferenceLine y={38} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: '38°', fill: '#ef4444', fontSize: 10 }} />
+
+                        {/* Doses Visualization - Rendered as reference lines/dots */}
+                        {rawData.filter(h => h.type === 'dose').map((dose, i) => {
+                            // Find closest temp time for X alignment or use timestamp directly if axis is numeric
+                            // Since XAxis uses categorical 'displayLabel', we need to match it or use numeric X axis
+                            // Current implementation uses categorical, which is tricky for independent points.
+                            // SWITCHING STRATEGY: Render doses as part of the main data stream but with null temp, 
+                            // and visual dots at the bottom of the chart.
+                            return null;
+                        })}
+
                         <Brush
                             dataKey="displayLabel"
                             height={30}
@@ -139,11 +149,25 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                         <Area
                             type="monotone"
                             dataKey="temp"
+                            connectNulls={true} // vital for continuous line despite dose interruptions
                             stroke="url(#strokeTemp)"
                             strokeWidth={4}
                             fillOpacity={1}
                             fill="url(#colorTemp)"
                             animationDuration={1500}
+                            // Custom Dot for Doses
+                            dot={(props: any) => {
+                                const { cx, cy, payload } = props;
+                                if (payload.type === 'dose') {
+                                    return (
+                                        <g key={payload.timestamp}>
+                                            <circle cx={cx} cy={260} r={6} fill={payload.drug === 'Ibuprofen' ? '#3b82f6' : '#10b981'} stroke="#fff" strokeWidth={2} />
+                                            <text x={cx} y={250} textAnchor="middle" fill="#94a3b8" fontSize={10}>{payload.drug[0]}</text>
+                                        </g>
+                                    );
+                                }
+                                return <circle cx={cx} cy={cy} r={0} />; // Hide normal temp dots
+                            }}
                             animationEasing="ease-out"
                         />
                     </AreaChart>

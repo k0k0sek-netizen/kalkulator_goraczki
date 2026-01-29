@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { DrugCard } from '@/components/drug-card';
 import { DoseModal } from '@/components/dose-modal'; // New Modal
 import { useProfile } from '@/context/profile-context';
+import { MedicineCabinet } from '@/components/medicine-cabinet';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Thermometer } from 'lucide-react';
@@ -279,19 +280,26 @@ export default function CalculatorPage() {
                 </motion.div>
             </div>
 
+            {/* Medicine Cabinet */}
+            <div className="mt-8">
+                <MedicineCabinet />
+            </div>
+
             {/* Modal */}
-            {editingDose && (
-                <DoseModal
-                    isOpen={editingDose.isOpen}
-                    onClose={() => setEditingDose(null)}
-                    onConfirm={handleConfirmDose}
-                    drugName={editingDose.drugName}
-                    initialDoseMl={editingDose.doseMl}
-                    amountPerMl={editingDose.amountPerMl}
-                    unit={editingDose.unit}
-                    initialTemperature={editingDose.initialTemp || (temperature ? parseFloat(temperature) : undefined)}
-                />
-            )}
+            {
+                editingDose && (
+                    <DoseModal
+                        isOpen={editingDose.isOpen}
+                        onClose={() => setEditingDose(null)}
+                        onConfirm={handleConfirmDose}
+                        drugName={editingDose.drugName}
+                        initialDoseMl={editingDose.doseMl}
+                        amountPerMl={editingDose.amountPerMl}
+                        unit={editingDose.unit}
+                        initialTemperature={editingDose.initialTemp || (temperature ? parseFloat(temperature) : undefined)}
+                    />
+                )
+            }
 
             {/* Quick link to history */}
             <Link href="/history">
@@ -299,6 +307,6 @@ export default function CalculatorPage() {
                     Zobacz historię podań
                 </Button>
             </Link>
-        </div>
+        </div >
     );
 }
