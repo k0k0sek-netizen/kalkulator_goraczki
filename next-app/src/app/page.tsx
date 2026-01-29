@@ -17,6 +17,7 @@ import { DRUG_CONFIG } from '@/lib/constants';
 import { TemperatureChartInteractive } from '@/components/temperature-chart-interactive';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AiChatAssistant } from '@/components/ai-chat-assistant';
+import { ChatTrigger } from '@/components/chat-trigger';
 
 export default function Dashboard() {
     const { profiles, activeProfile, activeProfileId, setActiveProfileId, addProfile } = useProfile();
@@ -113,31 +114,8 @@ export default function Dashboard() {
                         Twoje centrum zarządzania gorączką
                     </p>
                 </div>
-                {/* AI Assistant Button (Header) */}
-                <motion.div
-                    animate={{
-                        scale: [1, 1.05, 1],
-                        filter: [
-                            "drop-shadow(0 0 0px rgba(16, 185, 129, 0))",
-                            "drop-shadow(0 0 8px rgba(16, 185, 129, 0.3))",
-                            "drop-shadow(0 0 0px rgba(16, 185, 129, 0))"
-                        ]
-                    }}
-                    transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                    }}
-                >
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="rounded-full border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                        onClick={() => setIsAiChatOpen(true)}
-                    >
-                        <Bot className="h-6 w-6" />
-                    </Button>
-                </motion.div>
+                {/* AI Assistant Button (Header) - Premium 2026 Trigger */}
+                <ChatTrigger onClick={() => setIsAiChatOpen(true)} />
             </div>
 
             {activeProfile ? (
