@@ -1,15 +1,15 @@
 'use client';
 
 import {
-    AreaChart,
+    ComposedChart,
     Area,
+    Line,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    ReferenceLine,
-    Brush
+    ReferenceLine
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Thermometer } from 'lucide-react';
@@ -21,39 +21,35 @@ interface TemperatureChartProps {
 }
 
 export function TemperatureChartInteractive({ history }: TemperatureChartProps) {
-    // 1. Prepare raw data (sorted) - Include both temps and doses for timeline
+    // 1. Prepare raw data (sorted)
     const rawData = history
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-    if (rawData.length === 0) return null;
+    if (rawData.length === 0) return null; // Or return a "No data" placeholder
 
-    // 2. Check if span is > 24h
-    const hasMultiDay = rawData.length > 1 &&
-        (new Date(rawData[rawData.length - 1]!.timestamp).getTime() - new Date(rawData[0]!.timestamp).getTime() > 86400000);
+    // Calculate Min/Max Temp for Domain
+    const temps = rawData.filter(h => h.type === 'temp').map(h => h.temperature || 36);
+    const minTemp = temps.length ? Math.min(...temps) : 36;
+    const maxTemp = temps.length ? Math.max(...temps) : 38;
 
-    // 3. Map to Chart Format
+    const domainMin = Math.floor(minTemp - 0.5);
+    const domainMax = Math.ceil(maxTemp + 0.5);
+
+    // 2. Map to Chart Format (Numeric Timestamp for X)
     const chartData = rawData.map(h => {
         const date = new Date(h.timestamp);
         return {
-            timestamp: date.getTime(),
-            displayLabel: hasMultiDay
-                ? formatDate(date, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-                : formatDate(date, { timeStyle: 'short' }),
+            timestamp: date.getTime(), // Numeric X axis key
             fullDate: formatDate(date, { dateStyle: 'short', timeStyle: 'short' }),
-            temp: h.type === 'temp' ? h.temperature : null, // Null for doses so line breaks or interpolates? Recharts connectsNulls
+            displayTime: formatDate(date, { timeStyle: 'short' }),
+            temp: h.type === 'temp' ? h.temperature : null,
+            doseY: h.type === 'dose' ? domainMin + 0.2 : null, // Position dots at bottom of graph
             type: h.type,
             drug: h.drug !== 'Pomiar' ? h.drug : null,
             dose: h.doseMl ? `${h.doseMl}ml` : (h.doseMg ? `${h.doseMg}mg` : ''),
             notes: h.notes
         };
     });
-
-    // Calculate domain padding with more space at bottom for touch targets
-    const minTemp = Math.min(...chartData.map(d => d.temp || 36));
-    const maxTemp = Math.max(...chartData.map(d => d.temp || 38));
-
-    const domainMin = Math.floor(minTemp - 0.8); // More padding at bottom
-    const domainMax = Math.ceil(maxTemp + 0.5);
 
     return (
         <Card className="border-emerald-500/20 bg-slate-900/40 backdrop-blur-md">
@@ -63,12 +59,11 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                         <Thermometer className="h-5 w-5 text-emerald-500" />
                         Wykres Temperatury
                     </div>
-                    <span className="text-xs font-normal text-slate-400">Ostatnie pomiary</span>
                 </CardTitle>
             </CardHeader>
-            <CardContent className="h-[280px] p-0 pb-4">
+            <CardContent className="h-[280px] w-full p-0 pb-4">
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
+                    <ComposedChart
                         data={chartData}
                         margin={{
                             top: 20,
@@ -90,8 +85,13 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.5} />
+
                         <XAxis
-                            dataKey="displayLabel"
+                            dataKey="timestamp"
+                            domain={['auto', 'auto']}
+                            type="number"
+                            scale="time"
+                            tickFormatter={(unixTime) => formatDate(new Date(unixTime), { timeStyle: 'short' })}
                             stroke="#94a3b8"
                             fontSize={11}
                             tickMargin={10}
@@ -99,6 +99,7 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                             tickLine={false}
                             axisLine={false}
                         />
+
                         <YAxis
                             domain={[domainMin, domainMax]}
                             stroke="#94a3b8"
@@ -107,6 +108,7 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                             tickLine={false}
                             axisLine={false}
                         />
+
                         <Tooltip
                             contentStyle={{
                                 backgroundColor: 'rgba(15, 23, 42, 0.9)',
@@ -118,59 +120,58 @@ export function TemperatureChartInteractive({ history }: TemperatureChartProps) 
                             labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
                             cursor={{ stroke: '#f97316', strokeWidth: 1, strokeDasharray: '4 4' }}
                             itemStyle={{ color: '#f97316' }}
+                            labelFormatter={(timestamp) => formatDate(new Date(timestamp), { dateStyle: 'short', timeStyle: 'short' })}
                             formatter={(value: any, name: string | number | undefined, props: any) => {
                                 if (props.payload.type === 'dose') return [`${props.payload.dose}`, props.payload.drug];
+                                if (name === 'doseY') return [null, null];
                                 return [`${value}°C`, 'Temperatura'];
                             }}
-                            labelFormatter={(label, active) => {
-                                if (active && active[0]) return active[0].payload.fullDate;
-                                return label;
-                            }}
+                            filterNull={false}
                         />
                         <ReferenceLine y={38} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: '38°', fill: '#ef4444', fontSize: 10 }} />
 
-                        {/* Doses Visualization - Rendered as reference lines/dots */}
-                        {rawData.filter(h => h.type === 'dose').map((dose, i) => {
-                            // Find closest temp time for X alignment or use timestamp directly if axis is numeric
-                            // Since XAxis uses categorical 'displayLabel', we need to match it or use numeric X axis
-                            // Current implementation uses categorical, which is tricky for independent points.
-                            // SWITCHING STRATEGY: Render doses as part of the main data stream but with null temp, 
-                            // and visual dots at the bottom of the chart.
-                            return null;
-                        })}
-
-                        <Brush
-                            dataKey="displayLabel"
-                            height={30}
-                            stroke="#10b981"
-                            fill="#0f172a"
-                            tickFormatter={() => ''}
-                        />
+                        {/* Temperature Layer */}
                         <Area
                             type="monotone"
                             dataKey="temp"
-                            connectNulls={true} // vital for continuous line despite dose interruptions
+                            connectNulls={true}
                             stroke="url(#strokeTemp)"
                             strokeWidth={4}
                             fillOpacity={1}
                             fill="url(#colorTemp)"
                             animationDuration={1500}
-                            // Custom Dot for Doses
                             dot={(props: any) => {
                                 const { cx, cy, payload } = props;
-                                if (payload.type === 'dose') {
+                                if (payload.type === 'temp') return <circle cx={cx} cy={cy} r={3} fill="#fff" stroke="#f97316" strokeWidth={2} />;
+                                // Return null or path for empty to avoid React error
+                                return <circle cx={cx} cy={cy} r={0} />;
+                            }}
+                        />
+
+                        {/* Doses Layer */}
+                        <Line
+                            type="monotone"
+                            dataKey="doseY"
+                            stroke="none"
+                            isAnimationActive={false}
+                            dot={(props: any) => {
+                                const { cx, cy, payload } = props;
+                                if (payload.type === 'dose' && payload.drug && cx !== undefined && cy !== undefined) {
                                     return (
                                         <g key={payload.timestamp}>
-                                            <circle cx={cx} cy={260} r={6} fill={payload.drug === 'Ibuprofen' ? '#3b82f6' : '#10b981'} stroke="#fff" strokeWidth={2} />
-                                            <text x={cx} y={250} textAnchor="middle" fill="#94a3b8" fontSize={10}>{payload.drug[0]}</text>
+                                            <circle cx={cx} cy={cy} r={8} fill={payload.drug === 'Ibuprofen' ? '#3b82f6' : '#10b981'} bg-opacity={0.2} />
+                                            <circle cx={cx} cy={cy} r={6} fill={payload.drug === 'Ibuprofen' ? '#3b82f6' : '#10b981'} stroke="#fff" strokeWidth={1} />
+                                            <text x={cx} y={cy} dy={3} textAnchor="middle" fill="#fff" fontSize={8} fontWeight="bold">
+                                                {payload.drug[0]}
+                                            </text>
                                         </g>
                                     );
                                 }
-                                return <circle cx={cx} cy={cy} r={0} />; // Hide normal temp dots
+                                return <circle cx={cx} cy={cy} r={0} />;
                             }}
-                            animationEasing="ease-out"
                         />
-                    </AreaChart>
+
+                    </ComposedChart>
                 </ResponsiveContainer>
             </CardContent>
         </Card>
