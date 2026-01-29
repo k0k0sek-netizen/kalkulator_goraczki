@@ -69,7 +69,8 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
         "Gorączka nie spada",
         "Kiedy do lekarza?",
         "Co na drgawki?",
-        "Czy mogę łączyć leki?"
+        "Czy mogę łączyć leki?",
+        "Napisz raport dla lekarza 📝"
     ];
 
     useEffect(() => {
