@@ -1,10 +1,16 @@
-// ... imports
+'use client';
+
 import { useState, useRef, useEffect } from 'react';
-// ... other imports
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Bot, X, Send, User, Loader2, Mic, MicOff } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn, formatDate, generateId } from '@/lib/utils';
+import type { Profile, HistoryItem } from '@/types';
+import { askGeminiAction } from '@/actions/gemini';
+import { ModalPortal } from '@/components/ui/modal-portal';
 import { useProfile } from '@/context/profile-context';
-import { generateId } from '@/lib/utils';
-import type { HistoryItem } from '@/types';
 import { toast } from 'sonner';
 
 interface Message {
@@ -13,9 +19,52 @@ interface Message {
     text: string;
 }
 
+interface AiChatAssistantProps {
+    isOpen: boolean;
+    onClose: () => void;
+    activeProfile?: Profile;
+}
+
+// 1. Critical Logic (Always check first, regardless of connection)
+const getCriticalResponse = (input: string): string | null => {
+    const lower = input.toLowerCase();
+    if (lower.includes('drgawk')) {
+        return '🔴 PILNE: Przy drgawkach gorączkowych: Połóż dziecko w bezpiecznej pozycji na boku. Nie wkładaj nic do buzi. Poluzuj ubranie. Jeśli trwają >5 min, wezwij pogotowie (112).';
+    }
+    return null;
+};
+
+// 2. Offline Fallback Logic (Only if AI fails)
+const getOfflineFallback = (input: string, profile?: Profile): string | null => {
+    const lower = input.toLowerCase();
+
+    if (lower.includes('zwymiotował') || lower.includes('wymiot')) {
+        return `(Tryb Offline) 🤮 Jeśli dziecko zwymiotowało lek do 15 minut od podania, zazwyczaj podaje się dawkę ponownie. Jeśli minęło więcej czasu (np. 30-40 min), lek mógł się już wchłonąć.`;
+    }
+
+    if (lower.includes('nie spada') || lower.includes('nadal gorączka') || lower.includes('wysoka')) {
+        return `(Tryb Offline) 🌡️ Jeśli podałeś lek i gorączka nie spada po 1 godzinie, możesz rozważyć podanie leku z innej grupy (np. Paracetamol ↔ Ibuprofen). Pamiętaj o odstępach!`;
+    }
+
+    if (lower.includes('ile') && lower.includes('dawka')) {
+        if (profile) return `(Tryb Offline) ⚖️ Dla wagi ${profile.weight}kg sprawdź zakładkę "Kalkulator". Tam masz dokładne wyliczenie.`;
+        return '(Tryb Offline) ⚖️ Dawkę wyliczamy na podstawie wagi dziecka. Użyj zakładki "Kalkulator".';
+    }
+
+    if (lower.includes('lekarz') || lower.includes('szpital') || lower.includes('pogotowie') || lower.includes('karetk')) {
+        return '(Tryb Offline) 🚑 Skontaktuj się z lekarzem, jeśli: gorączka trwa >3 dni, dziecko ma drgawki, wybroczyny, sztywność karku lub problemy z oddychaniem.';
+    }
+
+    if (lower.includes('łączyć') || lower.includes('razem')) {
+        return '(Tryb Offline) 💊 Możesz stosować metodę naprzemienną (Paracetamol co 4h, Ibuprofen co 6h). Nigdy nie podawaj ich naraz w jednej dawce bez konsultacji.';
+    }
+
+    return null;
+};
+
 export function AiChatAssistant({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const { activeProfile, updateProfile } = useProfile();
-    // ... states
+
     const [messages, setMessages] = useState<Message[]>([
         { id: '1', role: 'assistant', text: 'Cześć! Jestem Twoim wirtualnym asystentem. Możesz do mnie pisać lub mówić (kliknij mikrofon). Spróbuj: "Dodaj temperaturę 38.5"' }
     ]);
@@ -25,7 +74,18 @@ export function AiChatAssistant({ isOpen, onClose }: { isOpen: boolean; onClose:
     const recognitionRef = useRef<any>(null); // Type any for SpeechRecognition
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // ... existing refs
+    const suggestions = [
+        "Dziecko zwymiotowało lek",
+        "Gorączka nie spada",
+        "Kiedy do lekarza?",
+        "Co na drgawki?",
+        "Czy mogę łączyć leki?",
+        "Napisz raport dla lekarza 📝"
+    ];
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, isLoading]);
 
     // Initialize Speech Recognition
     useEffect(() => {
@@ -150,7 +210,6 @@ export function AiChatAssistant({ isOpen, onClose }: { isOpen: boolean; onClose:
         // 1. Critical Check (Immediate)
         const criticalResponse = getCriticalResponse(text);
         if (criticalResponse) {
-            // ... existing
             setTimeout(() => {
                 setMessages(prev => [...prev, { id: 'crit', role: 'assistant', text: criticalResponse }]);
             }, 500);
@@ -159,13 +218,11 @@ export function AiChatAssistant({ isOpen, onClose }: { isOpen: boolean; onClose:
 
         // 2. Try Gemini (Online)
         setIsLoading(true);
-        // ... (existing gemini logic)
 
         // Prepare History Context
-        // ... (copy existing logic)
         let historyContext = '';
         if (activeProfile && activeProfile.history.length > 0) {
-            // Get full history
+            // Get full history for accurate analysis
             const recentHistory = [...activeProfile.history]
                 .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
@@ -192,8 +249,7 @@ export function AiChatAssistant({ isOpen, onClose }: { isOpen: boolean; onClose:
                 text: result.message
             }]);
         } catch (e) {
-            // 3. Offline Fallback
-            // ... (copy existing fallback)
+            // 3. Smart Offline Fallback
             console.warn('AI Unavailable, trying offline fallback:', e);
             const fallbackMsg = getOfflineFallback(text, activeProfile);
 
@@ -214,8 +270,6 @@ export function AiChatAssistant({ isOpen, onClose }: { isOpen: boolean; onClose:
             setIsLoading(false);
         }
     };
-
-    // ... render return
 
     return (
         <ModalPortal>
