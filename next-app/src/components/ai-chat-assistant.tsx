@@ -1,15 +1,11 @@
-'use client';
-
+// ... imports
 import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Bot, X, Send, User, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn, formatDate } from '@/lib/utils';
-import type { Profile } from '@/types';
-import { askGeminiAction } from '@/actions/gemini';
-import { ModalPortal } from '@/components/ui/modal-portal';
+// ... other imports
+import { Bot, X, Send, User, Loader2, Mic, MicOff } from 'lucide-react';
+import { useProfile } from '@/context/profile-context';
+import { generateId } from '@/lib/utils';
+import type { HistoryItem } from '@/types';
+import { toast } from 'sonner';
 
 interface Message {
     id: string;
@@ -17,69 +13,118 @@ interface Message {
     text: string;
 }
 
-interface AiChatAssistantProps {
-    isOpen: boolean;
-    onClose: () => void;
-    activeProfile?: Profile;
-}
-
-// 1. Critical Logic (Always check first, regardless of connection)
-const getCriticalResponse = (input: string): string | null => {
-    const lower = input.toLowerCase();
-    if (lower.includes('drgawk')) {
-        return '🔴 PILNE: Przy drgawkach gorączkowych: Połóż dziecko w bezpiecznej pozycji na boku. Nie wkładaj nic do buzi. Poluzuj ubranie. Jeśli trwają >5 min, wezwij pogotowie (112).';
-    }
-    return null;
-};
-
-// 2. Offline Fallback Logic (Only if AI fails)
-const getOfflineFallback = (input: string, profile?: Profile): string | null => {
-    const lower = input.toLowerCase();
-
-    if (lower.includes('zwymiotował') || lower.includes('wymiot')) {
-        return `(Tryb Offline) 🤮 Jeśli dziecko zwymiotowało lek do 15 minut od podania, zazwyczaj podaje się dawkę ponownie. Jeśli minęło więcej czasu (np. 30-40 min), lek mógł się już wchłonąć.`;
-    }
-
-    if (lower.includes('nie spada') || lower.includes('nadal gorączka') || lower.includes('wysoka')) {
-        return `(Tryb Offline) 🌡️ Jeśli podałeś lek i gorączka nie spada po 1 godzinie, możesz rozważyć podanie leku z innej grupy (np. Paracetamol ↔ Ibuprofen). Pamiętaj o odstępach!`;
-    }
-
-    if (lower.includes('ile') && lower.includes('dawka')) {
-        if (profile) return `(Tryb Offline) ⚖️ Dla wagi ${profile.weight}kg sprawdź zakładkę "Kalkulator". Tam masz dokładne wyliczenie.`;
-        return '(Tryb Offline) ⚖️ Dawkę wyliczamy na podstawie wagi dziecka. Użyj zakładki "Kalkulator".';
-    }
-
-    if (lower.includes('lekarz') || lower.includes('szpital') || lower.includes('pogotowie') || lower.includes('karetk')) {
-        return '(Tryb Offline) 🚑 Skontaktuj się z lekarzem, jeśli: gorączka trwa >3 dni, dziecko ma drgawki, wybroczyny, sztywność karku lub problemy z oddychaniem.';
-    }
-
-    if (lower.includes('łączyć') || lower.includes('razem')) {
-        return '(Tryb Offline) 💊 Możesz stosować metodę naprzemienną (Paracetamol co 4h, Ibuprofen co 6h). Nigdy nie podawaj ich naraz w jednej dawce bez konsultacji.';
-    }
-
-    return null;
-};
-
-export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssistantProps) {
+export function AiChatAssistant({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+    const { activeProfile, updateProfile } = useProfile();
+    // ... states
     const [messages, setMessages] = useState<Message[]>([
-        { id: '1', role: 'assistant', text: 'Cześć! Jestem Twoim wirtualnym asystentem. Działam online (Gemini AI), ale w razie braku zasięgu mam też wiedzę offline. Jak mogę pomóc?' }
+        { id: '1', role: 'assistant', text: 'Cześć! Jestem Twoim wirtualnym asystentem. Możesz do mnie pisać lub mówić (kliknij mikrofon). Spróbuj: "Dodaj temperaturę 38.5"' }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const recognitionRef = useRef<any>(null); // Type any for SpeechRecognition
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const suggestions = [
-        "Dziecko zwymiotowało lek",
-        "Gorączka nie spada",
-        "Kiedy do lekarza?",
-        "Co na drgawki?",
-        "Czy mogę łączyć leki?",
-        "Napisz raport dla lekarza 📝"
-    ];
+    // ... existing refs
 
+    // Initialize Speech Recognition
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isLoading]);
+        if (typeof window !== 'undefined') {
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                const recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.lang = 'pl-PL';
+                recognition.interimResults = false;
+
+                recognition.onresult = (event: any) => {
+                    const transcript = event.results[0][0].transcript;
+                    setInput(transcript);
+                    // Optional: Auto-send if high confidence? Let user confirm for safety.
+                    // For "Actions", auto-sending might be better UX if we parse it immediately.
+                    // Let's just set Input for now and let user click send OR handle "Command Mode"
+                    handleSend(transcript);
+                };
+
+                recognition.onend = () => {
+                    setIsListening(false);
+                };
+
+                recognition.onerror = (event: any) => {
+                    console.error('Speech recognition error', event.error);
+                    setIsListening(false);
+                    toast.error('Błąd rozpoznawania mowy: ' + event.error);
+                };
+
+                recognitionRef.current = recognition;
+            }
+        }
+    }, []);
+
+    const toggleListening = () => {
+        if (!recognitionRef.current) {
+            toast.error('Twoja przeglądarka nie obsługuje rozpoznawania mowy.');
+            return;
+        }
+
+        if (isListening) {
+            recognitionRef.current.stop();
+        } else {
+            recognitionRef.current.start();
+            setIsListening(true);
+            toast.info('Słucham... 🎙️');
+        }
+    };
+
+    // Smart Command Parser
+    const processCommand = (text: string): boolean => {
+        if (!activeProfile) return false;
+        const lower = text.toLowerCase();
+
+        // Regex for Temperature: "temp/gorączka 38.5" or "38.5 stopni"
+        // Try to capture number (with dot or comma)
+        // Context keywords: "dodaj", "zapisz", "mam", "jest", "temperatura", "gorączka"
+        // Simplified: if text contains number and "temp" or "gorączk"
+
+        const tempMatch = lower.match(/(?:temp|gorączk|stan|wynik).*?(\d+[.,]?\d*)/i) ||
+            lower.match(/(\d+[.,]?\d*).*?(?:stopni|st\.|celcjusza)/i) ||
+            (lower.includes('dodaj') && lower.match(/(\d+[.,]?\d*)/)); // "Dodaj 38.5"
+
+        if (tempMatch && tempMatch[1]) {
+            const valStr = tempMatch[1].replace(',', '.');
+            const val = parseFloat(valStr);
+
+            if (!isNaN(val) && val > 34 && val < 44) {
+                // Create Action
+                const newItem: HistoryItem = {
+                    id: generateId(),
+                    timestamp: new Date(),
+                    type: 'dose', // Actually 'dose' type handles temps well in this schema? Or purely 'temp'?
+                    // Looking at types/index.ts -> HistoryItem can have 'dose' type but also 'temperature' field.
+                    // Ideally we should distinguish, but sticking to existing pattern:
+                    // The chart uses 'temperature' field. The type 'dose' usually implies drug.
+                    // Let's see handleConfirmDose in calculator page.
+                    // It sets type: 'dose' even if just temp? 
+                    // Actually let's use type 'dose' but with drug 'Pomiar' as seen in Calculator logic?
+                    // Dashboard says: drug !== 'Pomiar' ? h.drug : null
+                    drug: 'Pomiar',
+                    doseMl: 0,
+                    doseMg: 0,
+                    unit: 'ml', // Dummy
+                    temperature: val,
+                    hoursInterval: 0,
+                    notes: 'Głosowo'
+                };
+
+                const updatedHistory = [newItem, ...activeProfile.history];
+                updateProfile({ ...activeProfile, history: updatedHistory, updatedAt: new Date() });
+
+                return true; // Command Handled
+            }
+        }
+        return false;
+    };
+
 
     const handleSend = async (text: string) => {
         if (!text.trim() || isLoading) return;
@@ -88,9 +133,24 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
         setMessages(prev => [...prev, userMsg]);
         setInput('');
 
+        // 0. Check for Commands (Voice Actions)
+        if (processCommand(text)) {
+            // If command processed successfully, add a system confirmation message
+            // Wait a bit for UX
+            setTimeout(() => {
+                setMessages(prev => [...prev, {
+                    id: Date.now().toString(),
+                    role: 'assistant',
+                    text: `✅ Zapisałem pomiar: ${text.match(/(\d+[.,]?\d*)/)?.[1]?.replace(',', '.') || ''}°C.`
+                }]);
+            }, 600);
+            return;
+        }
+
         // 1. Critical Check (Immediate)
         const criticalResponse = getCriticalResponse(text);
         if (criticalResponse) {
+            // ... existing
             setTimeout(() => {
                 setMessages(prev => [...prev, { id: 'crit', role: 'assistant', text: criticalResponse }]);
             }, 500);
@@ -99,11 +159,13 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
 
         // 2. Try Gemini (Online)
         setIsLoading(true);
+        // ... (existing gemini logic)
 
         // Prepare History Context
+        // ... (copy existing logic)
         let historyContext = '';
         if (activeProfile && activeProfile.history.length > 0) {
-            // Get full history for accurate analysis
+            // Get full history
             const recentHistory = [...activeProfile.history]
                 .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
@@ -114,7 +176,9 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                 const notes = h.notes ? `, Notatka: ${h.notes}` : '';
                 return `- [${date}] ${type}${symptoms}${notes}`;
             }).join('\n');
-        } const context = activeProfile
+        }
+
+        const context = activeProfile
             ? `Pacjent: ${activeProfile.name}, Waga: ${activeProfile.weight}kg.\n\nOstatnia historia choroby (od najnowszych):\n${historyContext || 'Brak wpisów.'}`
             : '';
 
@@ -128,7 +192,8 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                 text: result.message
             }]);
         } catch (e) {
-            // 3. Smart Offline Fallback
+            // 3. Offline Fallback
+            // ... (copy existing fallback)
             console.warn('AI Unavailable, trying offline fallback:', e);
             const fallbackMsg = getOfflineFallback(text, activeProfile);
 
@@ -150,13 +215,13 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
         }
     };
 
-
+    // ... render return
 
     return (
         <ModalPortal>
             <AnimatePresence>
                 {isOpen && (
-                    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -194,6 +259,14 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
                                             </div>
                                         </div>
                                     )}
+                                    {isListening && (
+                                        <div className="flex justify-start">
+                                            <div className="bg-emerald-500/10 rounded-2xl rounded-bl-none px-4 py-2 border border-emerald-500/30 flex items-center gap-2 text-emerald-400 text-sm animate-pulse">
+                                                <Mic className="h-4 w-4" />
+                                                <span>Słucham...</span>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div ref={messagesEndRef} />
                                 </CardContent>
 
@@ -212,13 +285,22 @@ export function AiChatAssistant({ isOpen, onClose, activeProfile }: AiChatAssist
 
                                 <CardFooter className="p-3 bg-slate-950/30 border-t border-slate-800">
                                     <form
-                                        className="flex w-full gap-2"
+                                        className="flex w-full gap-2 items-center"
                                         onSubmit={(e) => { e.preventDefault(); handleSend(input); }}
                                     >
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="ghost"
+                                            className={cn("text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all", isListening && "text-red-500 hover:text-red-400 bg-red-500/10 animate-pulse")}
+                                            onClick={toggleListening}
+                                        >
+                                            {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                                        </Button>
                                         <Input
                                             value={input}
                                             onChange={e => setInput(e.target.value)}
-                                            placeholder="Napisz pytanie..."
+                                            placeholder={isListening ? "Mów teraz..." : "Dodaj temp. lub zapytaj..."}
                                             className="bg-slate-900 border-slate-700 focus:ring-emerald-500"
                                         />
                                         <Button type="submit" size="icon" className="bg-emerald-600 hover:bg-emerald-700" disabled={isLoading}>

@@ -291,7 +291,6 @@ export default function Dashboard() {
             <AiChatAssistant
                 isOpen={isAiChatOpen}
                 onClose={() => setIsAiChatOpen(false)}
-                activeProfile={activeProfile || undefined}
             />
         </div>
     );
