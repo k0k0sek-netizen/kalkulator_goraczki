@@ -14,7 +14,7 @@ import { AIInsights } from '@/components/ai-insights';
 import { getLastDose, isPediatric } from '@/lib/calculations';
 import { useProfile } from '@/context/profile-context';
 import { DRUG_CONFIG } from '@/lib/constants';
-import { TemperatureChartInteractive } from '@/components/temperature-chart-interactive';
+import { TemperatureChartVisx } from '@/components/temperature-chart-visx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AiChatAssistant } from '@/components/ai-chat-assistant';
 import { ChatTrigger } from '@/components/chat-trigger';
@@ -238,7 +238,7 @@ export default function Dashboard() {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.2 }}
                     >
-                        <TemperatureChartInteractive history={activeProfile.history} />
+                        <TemperatureChartVisx history={activeProfile.history} />
                     </motion.div>
                 </>
             ) : (
