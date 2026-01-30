@@ -52,6 +52,19 @@ export default function RootLayout({
                     <div className="mx-auto h-full flex flex-col relative bg-slate-950/20 max-w-md w-full shadow-2xl overflow-hidden rounded-xl border-x border-slate-800/50">
                         <div className="flex-1 overflow-y-auto custom-scrollbar pb-24">
                             {children}
+                            <footer className="py-6 text-center text-xs text-slate-600/80 mt-auto">
+                                <p>
+                                    Design & Code by{' '}
+                                    <a
+                                        href="https://wektorkodu.pl"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-emerald-500/60 hover:text-emerald-400 transition-colors font-medium"
+                                    >
+                                        wektorkodu.pl
+                                    </a>
+                                </p>
+                            </footer>
                         </div>
                         <BottomNav />
                         <Toaster position="top-center" />
