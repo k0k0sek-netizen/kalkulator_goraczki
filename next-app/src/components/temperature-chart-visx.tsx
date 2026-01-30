@@ -101,7 +101,8 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
     const handleTooltip = useCallback(
         (event: React.TouchEvent<SVGRectElement> | React.MouseEvent<SVGRectElement>) => {
             const { x } = localPoint(event) || { x: 0 };
-            const x0 = xScale.invert(x);
+            const xChart = x - margin.left;
+            const x0 = xScale.invert(xChart);
             let closest = data[0];
             let minDiff = Infinity;
             for (const d of data) {
@@ -136,6 +137,20 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
                 <LinearGradient id="line-gradient" from="#ef4444" to="#10b981" />
 
                 <rect x={0} y={0} width={width} height={height} fill="url(#area-gradient)" fillOpacity={0.05} rx={14} />
+
+                {/* Touch Area */}
+                <Bar
+                    x={0}
+                    y={0}
+                    width={width}
+                    height={height}
+                    fill="transparent"
+                    rx={14}
+                    onTouchStart={handleTooltip}
+                    onTouchMove={handleTooltip}
+                    onMouseMove={handleTooltip}
+                    onMouseLeave={() => hideTooltip()}
+                />
 
                 <Group left={margin.left} top={margin.top}>
                     {/* Grid */}
@@ -204,19 +219,7 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
                         );
                     })}
 
-                    {/* Touch Area */}
-                    <Bar
-                        x={0}
-                        y={0}
-                        width={xMax}
-                        height={yMax}
-                        fill="transparent"
-                        rx={14}
-                        onTouchStart={handleTooltip}
-                        onTouchMove={handleTooltip}
-                        onMouseMove={handleTooltip}
-                        onMouseLeave={() => hideTooltip()}
-                    />
+
 
                     {/* Axes */}
                     <AxisBottom
