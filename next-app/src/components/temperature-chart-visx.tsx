@@ -91,7 +91,8 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
     // Dynamic Time Format
     const timeSpan = Math.max(...data.map((d: any) => d.date.getTime())) - Math.min(...data.map((d: any) => d.date.getTime()));
     const isMultiDay = timeSpan > 86400000; // 24h
-    const axisDateFormat = isMultiDay ? timeFormat('%d.%m %H:%M') : timeFormat('%H:%M');
+    // User requested "only date" for multi-day to prevent overlap
+    const axisDateFormat = isMultiDay ? timeFormat('%d.%m') : timeFormat('%H:%M');
 
     // Accessors
     const getDate = (d: DataPoint) => d.date;
@@ -225,13 +226,13 @@ function Chart({ width, height, history, showTooltip, hideTooltip, tooltipData, 
                     <AxisBottom
                         top={yMax}
                         scale={xScale}
-                        numTicks={width > 500 ? 5 : 4}
+                        numTicks={width > 500 ? 5 : (isMultiDay ? 3 : 4)} // Reduce ticks on mobile/multi-day
                         tickFormat={(val) => axisDateFormat(val as Date)}
                         stroke="#334155"
                         tickStroke="#334155"
                         tickLabelProps={() => ({
                             fill: '#94a3b8',
-                            fontSize: 10,
+                            fontSize: 9, // Slightly smaller font
                             textAnchor: 'middle',
                             dy: 2
                         })}
